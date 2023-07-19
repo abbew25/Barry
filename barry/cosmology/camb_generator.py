@@ -85,7 +85,7 @@ class CambGenerator(object):
         if vary_neff: 
             self.filename_unique = f"{int(self.redshift * 1000)}_{self.om_resolution}_{self.h0_resolution}_{self.neff_resolution}_{hh}_{int(ob * 10000)}_{int(ns * 1000)}_{int(mnu * 10000)}"
         self.filename = self.data_dir + f"/camb_{self.filename_unique}.npy"
-        self.k_min = 1e-5
+        self.k_min = 1e-4
         self.k_max = 100
         self.k_num = 2000
         self.ks = np.logspace(np.log(self.k_min), np.log(self.k_max), self.k_num, base=np.e)
@@ -147,6 +147,8 @@ class CambGenerator(object):
             omch2 = (om - self.omega_b) * h0 * h0
             data = self._interpolate(omch2, h0, Neff)
         return {
+            "om": om,
+            "h0": h0,
             "r_s": data[0],
             "ks": self.ks,
             "pk_lin": data[1 : 1 + self.k_num],
@@ -175,6 +177,7 @@ class CambGenerator(object):
             
         for i, omch2 in enumerate(self.omch2s):
             for j, h0 in enumerate(self.h0s):
+
                 
                 if self.vary_neff: 
                     for k, neff in enumerate(self.neffs):
@@ -195,7 +198,7 @@ class CambGenerator(object):
                         pars.NonLinear = camb.model.NonLinear_none
                         results = camb.get_results(pars)
                         params = results.get_derived_params()
-                        rdrag = params["rdrag"]
+                        rdrag = params["rdrag"]* h0
                         kh, z, pk_lin = results.get_matter_power_spectrum(minkh=self.k_min, maxkh=self.k_max, npoints=self.k_num)
                         pars.NonLinear = camb.model.NonLinear_pk
                         results.calc_power_spectra(pars)
@@ -221,7 +224,7 @@ class CambGenerator(object):
                     pars.NonLinear = camb.model.NonLinear_none
                     results = camb.get_results(pars)
                     params = results.get_derived_params()
-                    rdrag = params["rdrag"]
+                    rdrag = params["rdrag"]* h0
                     kh, z, pk_lin = results.get_matter_power_spectrum(minkh=self.k_min, maxkh=self.k_max, npoints=self.k_num)
                     pars.NonLinear = camb.model.NonLinear_pk
                     results.calc_power_spectra(pars)

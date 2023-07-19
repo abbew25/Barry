@@ -214,12 +214,8 @@ class PowerSpectrumFit(Model):
 
         """
         # Get base linear power spectrum from camb
-<<<<<<< HEAD
         res = self.camb.get_data(om=om, h0=self.camb.h0, Neff=Neff)
-=======
-        res = self.camb.get_data(om=om, h0=self.camb.h0)
 
->>>>>>> 1fda5a5f95ac8ff090458b5eaea9a9972f74eb98
         pk_smooth_lin = smooth_func(
             self.camb.ks,
             res["pk_lin"],
