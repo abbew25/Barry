@@ -43,7 +43,7 @@ class PowerSpectrumFit(Model):
             The sort of smoothing to use. Either 'hinton2017' or 'eh1998'
         fix_params : list[str], optional
             Parameter names to fix to their defaults. Defaults to just `[om]`. With vary_neff = False it defaults to [om, Neff]. With vary_phase_shift_neff = False
-            then the phase shift parameter is also fixed; fix_params = ('om', 'Neff', 'phase_shift'). 
+            then the phase shift parameter is also fixed; fix_params = ('om', 'Neff', 'beta_phase_shift'). 
             Having both of these options (which should be degenerate) allows us to test the effect of varying the cosmology (by varying Neff) or varying the phase shift parameter for Neff instead. We should expect varying either parameter to give the same result, and it probably doesn't make sense to vary both at the same time. 
         postprocess : `Postprocess` object
             The class to postprocess model predictions. Defaults to none.
@@ -57,7 +57,7 @@ class PowerSpectrumFit(Model):
         if not vary_neff:
             fix_params.append("Neff")
         if not vary_phase_shift_neff:
-            fix_params.append("phase_shift")
+            fix_params.append("beta_phase_shift")
             
         fix_params = tuple(fix_params) 
         
@@ -104,6 +104,23 @@ class PowerSpectrumFit(Model):
         self.kvals = None
         self.pksmooth = None
         self.pkratio = None
+        
+    def fitting_func_ps(self, kvals, phi_inf=0.227, kstar=0.0324, epsilon=0.872):
+        """Fitting function for the scale-dependent component of the Baumann et al 2017 
+        parameterization of the BAO phase shift due to the effective number of neutrino species.
+        From the Baumann et al 2017 work best fit values for parameters in this function are:
+        
+        phi_infinity = 0.227
+        k_* = 0.0324 h/Mpc 
+        epsilon = 0.872
+        """
+        return phi_inf/( 1.0 + ((kstar/kvals) ** epsilon) )
+    
+    def phase_shift(self, beta_phase_shift, kvals, phi_inf=0.227, kstar=0.0324, epsilon=0.872):
+        """ The fitting function for the neutrino induced phase shift used in Baumann et al 2017,
+        parameterized as phi(Neff, k) = Beta(Neff) * f(k) where f(k) is a scale-dependent fitting 
+        function and Beta(Neff) is treated as a free parameter in the BAO analysis. """
+        return beta_phase_shift*self.fitting_function_phase_shift(kvals, phi_inf=phi_inf, kstar=kstar, epsilon=epsilon)
 
     def set_marg(self, fix_params, poly_poles, n_poly, do_bias=False):
 
@@ -191,7 +208,7 @@ class PowerSpectrumFit(Model):
         self.add_param("om", r"$\Omega_m$", 0.1, 0.5, 0.31)  # Cosmology
         self.add_param("Neff", r"$N_{\mathrm{eff}}$", 0.0, 5.0, 3.044)  # Cosmology 
         self.add_param("alpha", r"$\alpha$", 0.8, 1.2, 1.0)  # Stretch for monopole
-        self.add_param("phase_shift", r"$\phi$", -4.0, 6.0, 1.0) # phase shift parameter due to Neff 
+        self.add_param("beta_phase_shift", r"$\phi$", -4.0, 6.0, 1.0) # phase shift parameter due to Neff 
         if not self.isotropic:
             self.add_param("epsilon", r"$\epsilon$", -0.2, 0.2, 0.0)  # Stretch for multipoles
         
@@ -224,6 +241,7 @@ class PowerSpectrumFit(Model):
             ob=self.camb.omega_b,
             ns=self.camb.ns,
             rs=res["r_s"],
+            Neff=Neff,
             **self.smooth_type,
         )  # Get the smoothed power spectrum
         pk_ratio = res["pk_lin"] / pk_smooth_lin - 1.0  # Get the ratio

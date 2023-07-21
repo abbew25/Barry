@@ -2,7 +2,8 @@ import logging
 import os
 import numpy as np
 from barry.samplers.sampler import Sampler
-
+import sys 
+sys.path.append("../../")
 
 class DynestySampler(Sampler):
     def __init__(self, temp_dir=None, max_iter=None, dynamic=False, nlive=500, print_progress=False):

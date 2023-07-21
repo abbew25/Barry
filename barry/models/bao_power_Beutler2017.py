@@ -58,11 +58,13 @@ class PowerBeutler2017(PowerSpectrumFit):
         if not vary_neff:
             fix_params.append("Neff")
         if not vary_phase_shift_neff:
-            fix_params.append("phase_shift")
+            fix_params.append("beta_phase_shift")
             
         fix_params = tuple(fix_params) 
 
         self.set_marg(fix_params, poly_poles, n_poly, do_bias=True)
+        
+        self.declare_parameters()
 
     def declare_parameters(self):
         super().declare_parameters()
@@ -119,14 +121,21 @@ class PowerBeutler2017(PowerSpectrumFit):
         # differs from our implementation of the Beutler2017 isotropic model quite a bit. This results in some duplication
         # of code and a few nested if statements, but it's perhaps more readable and a little faster (because we only
         # need one interpolation for the whole isotropic monopole, rather than separately for the smooth and wiggle components)
-
+        
         if not for_corr:
             if "b{0}" not in p:
                 p = self.deal_with_ndata(p, 0)
 
         if self.isotropic:
             pk = [np.zeros(len(k))]
-            kprime = k if for_corr else k / p["alpha"]
+            
+            kprime = k if for_corr else k / p["alpha"] 
+            
+            # additional term for varying the phase shift added to kprime goes to zero when beta_face_shift = 1.0 (standard value of Neff=3.044) 
+            if self.param_dict["beta_phase_shift"].active:
+                rdrag_fid = self.camb.get_data(om=p["om"],Neff=p["Neff"])['r_s']
+                kprime_varyphaseshift = kprime + (p['beta_phase_shift'] - 1.0)*self.fitting_func_ps(k)/rdrag_fid
+                
             if self.dilate_smooth:
                 pk_smooth = splev(kprime, splrep(ks, pk_smooth_lin)) / (1.0 + kprime**2 * p["sigma_s"] ** 2 / 2.0) ** 2
             else:
@@ -143,6 +152,9 @@ class PowerBeutler2017(PowerSpectrumFit):
                 # Compute the propagator
                 C = np.exp(-0.5 * kprime**2 * p["sigma_nl"] ** 2)
                 propagator = 1.0 + splev(kprime, splrep(ks, pk_ratio)) * C
+                if self.param_dict["beta_phase_shift"].active:
+                    C = np.exp(-0.5 * kprime_varyphaseshift**2 * p["sigma_nl"] ** 2)
+                    propagator = 1.0 + splev(kprime_varyphaseshift, splrep(ks, pk_ratio)) * C
             prefac = np.ones(len(kprime)) if smooth else propagator
 
             if for_corr or nopoly:
@@ -187,7 +199,7 @@ class PowerBeutler2017(PowerSpectrumFit):
 
             # Polynomial shape
             pk = [pk0, np.zeros(len(k)), pk2, np.zeros(len(k)), pk4, np.zeros(len(k))]
-
+            
             if for_corr or nopoly:
                 poly = None
                 kprime = k

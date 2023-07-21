@@ -260,7 +260,7 @@ class CambGenerator(object):
                 
                 
         if self.h0_resolution == 1:
-            h0_index = 0
+            h0_index = 0.0
         else:
             h0_index = 1.0 * (self.h0_resolution - 1) * (h0 - self.h0s[0]) / (self.h0s[-1] - self.h0s[0])
 
@@ -272,7 +272,7 @@ class CambGenerator(object):
                 
                 
         if not self.vary_neff: 
-            neff_index = 0
+            neff_index = 0.0
         else: 
             neff_index = 1.0 * (self.neff_resolution - 1) * (Neff - self.neffs[0]) / (self.neffs[-1] - self.neffs[0])
 
@@ -375,6 +375,8 @@ if __name__ == "__main__":
 
     import timeit
     import matplotlib.pyplot as plt
+    import sys
+    sys.path.append("../../")
 
     logging.basicConfig(level=logging.DEBUG, format="[%(levelname)7s |%(funcName)15s]   %(message)s")
     logging.getLogger("matplotlib").setLevel(logging.WARNING)
@@ -403,40 +405,39 @@ if __name__ == "__main__":
 #     plt.show()
     
     
-    c2 = getCambGenerator(redshift=0.1, Neff=3.044, h0_resolution=3, om_resolution=3, vary_neff=True, neff_resolution=10)
+    c2 = getCambGenerator(redshift=0.1, Neff=3.044, h0_resolution=1, om_resolution=1, vary_neff=True, neff_resolution=10)
     #c2._generate_data()
     
     #exit() 
     
     relpower = 1#c2.get_data(neff=3.0)["pk_lin"]
-    plt.plot(c2.ks, c2.get_data(neff=2., h0=0.6, om=0.3)["pk_lin"]/relpower, color="b", linestyle="-", 
+    plt.plot(c2.ks, c2.get_data(Neff=1., h0=0.6, om=0.3)["pk_lin"]/relpower, color="b", linestyle="-", 
              label=r"$\mathrm{Linear}\,h_0=0.6\,\Omega_m=0.3\,$Neff=2.")
-    plt.plot(c2.ks, c2.get_data(neff=3.5, h0=0.6, om=0.3)["pk_lin"]/relpower, color="g", linestyle=":", 
+    plt.plot(c2.ks, c2.get_data(Neff=4.5, h0=0.6, om=0.3)["pk_lin"]/relpower, color="g", linestyle=":", 
              label=r"$\mathrm{Linear}\,h_0=0.6\,\Omega_m=0.3\,$Neff=3.5")
-    plt.plot(c2.ks, c2.get_data(neff=2., h0=0.7, om=0.3)["pk_lin"]/relpower, color="r", linestyle="-.", 
+    plt.plot(c2.ks, c2.get_data(Neff=1., h0=0.7, om=0.3)["pk_lin"]/relpower, color="r", linestyle="-.", 
              label=r"$\mathrm{Linear}\,h_0=0.7\,\Omega_m=0.3\,$Neff=2")
-    plt.plot(c2.ks, c2.get_data(neff=3.5, h0=0.7, om=0.3)["pk_lin"]/relpower, color="y", linestyle="--", 
+    plt.plot(c2.ks, c2.get_data(Neff=4.5, h0=0.7, om=0.3)["pk_lin"]/relpower, color="y", linestyle="--", 
              label=r"$\mathrm{Linear}\,h_0=0.7\,\Omega_m=0.3\,$Neff=3.5")
     
-    plt.plot(c2.ks, c2.get_data(neff=2., h0=0.6, om=0.2)["pk_lin"]/relpower, color="b", linestyle="-", 
+    plt.plot(c2.ks, c2.get_data(Neff=1., h0=0.6, om=0.2)["pk_lin"]/relpower, color="b", linestyle="-", 
              label=r"$\mathrm{Linear}\,h_0=0.6\,\Omega_m=0.2\,$Neff=2.")
-    plt.plot(c2.ks, c2.get_data(neff=3.5, h0=0.6, om=0.2)["pk_lin"]/relpower, color="g", linestyle=":", 
+    plt.plot(c2.ks, c2.get_data(Neff=4.5, h0=0.6, om=0.2)["pk_lin"]/relpower, color="g", linestyle=":", 
              label=r"$\mathrm{Linear}\,h_0=0.6\,\Omega_m=0.2\,$Neff=3.5")
-    plt.plot(c2.ks, c2.get_data(neff=2., h0=0.7, om=0.2)["pk_lin"]/relpower, color="r", linestyle="-.", 
+    plt.plot(c2.ks, c2.get_data(Neff=1., h0=0.7, om=0.2)["pk_lin"]/relpower, color="r", linestyle="-.", 
              label=r"$\mathrm{Linear}\,h_0=0.7\,\Omega_m=0.2\,$Neff=2")
-    plt.plot(c2.ks, c2.get_data(neff=3.5, h0=0.7, om=0.2)["pk_lin"]/relpower, color="y", linestyle="--", 
+    plt.plot(c2.ks, c2.get_data(Neff=4.5, h0=0.7, om=0.2)["pk_lin"]/relpower, color="y", linestyle="--", 
              label=r"$\mathrm{Linear}\,h_0=0.7\,\Omega_m=0.2\,$Neff=3.5")
     
-    #plt.plot(c2.ks, c2.get_data(neff=4.0)["pk_lin"]/relpower, color="k", linestyle="--", label=r"$\mathrm{Linear}\,$Neff=4")
+    #plt.plot(c2.ks, c2.get_data(Neff=4.0)["pk_lin"]/relpower, color="k", linestyle="--", label=r"$\mathrm{Linear}\,$Neff=4")
     
-#     plt.plot(c2.ks, c2.get_data(neff=2.5)["pk_nl_z"]/relpower, color="b", linestyle="--", label=r"$\mathrm{Halofit}\,$Neff=2.5")
-#     plt.plot(c2.ks, c2.get_data(neff=3.5)["pk_nl_z"]/relpower, color="r", linestyle="--", label=r"$\mathrm{Halofit}\,$Neff=3.5")
-    
+#     plt.plot(c2.ks, c2.get_data(Neff=2.5)["pk_nl_z"]/relpower, color="b", linestyle="--", label=r"$\mathrm{Halofit}\,$Neff=2.5")
+#     plt.plot(c2.ks, c2.get_data(Neff=3.5)["pk_nl_z"]/relpower, color="r", linestyle="--", label=r"$\mathrm{Halofit}\,$Neff=3.5")
     plt.xscale("log")
     plt.yscale("log")
     plt.legend()
     plt.savefig('test2.png')
-    plt.show()
+    #plt.show()
     
     
 #     c1 = getCambGenerator(neff=3.045, h0_resolution=3, om_resolution=1)
