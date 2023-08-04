@@ -744,11 +744,11 @@ class Model(ABC):
             print(f"\\alpha_{{||}}, \\alpha_{{\\perp}} = ", self.get_alphas(p["alpha"], p["epsilon"]))
             
         if "Neff" in p:
-            if "Neff" not in fix_params:
+            if "Neff" not in self.fix_params:
                 print("Neff = %.4f" % p["Neff"])
         
         if "om" in p:
-            if "om" not in fix_params:
+            if "om" not in self.fix_params:
                 print("om = %.4f" % p["om"])
 
         if plot:

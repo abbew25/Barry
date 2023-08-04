@@ -64,8 +64,7 @@ class PowerBeutler2017(PowerSpectrumFit):
 
         self.set_marg(fix_params, poly_poles, n_poly, do_bias=True)
         
-        self.declare_parameters()
-
+        
     def declare_parameters(self):
         super().declare_parameters()
         self.add_param("sigma_s", r"$\Sigma_s$", 0.0, 20.0, 10.0)  # Fingers-of-god damping
@@ -134,7 +133,7 @@ class PowerBeutler2017(PowerSpectrumFit):
             # additional term for varying the phase shift added to kprime goes to zero when beta_face_shift = 1.0 (standard value of Neff=3.044) 
             if self.param_dict["beta_phase_shift"].active:
                 rdrag_fid = self.camb.get_data(om=p["om"],Neff=p["Neff"])['r_s']
-                kprime_varyphaseshift = kprime + (p['beta_phase_shift'] - 1.0)*self.fitting_func_ps(k)/rdrag_fid
+                kprime_phaseshift = kprime + (p['beta_phase_shift'] - 1.0)*self.fitting_func_ps(k)/rdrag_fid
                 
             if self.dilate_smooth:
                 pk_smooth = splev(kprime, splrep(ks, pk_smooth_lin)) / (1.0 + kprime**2 * p["sigma_s"] ** 2 / 2.0) ** 2
@@ -150,11 +149,13 @@ class PowerBeutler2017(PowerSpectrumFit):
                 propagator = np.ones(len(kprime))
             else:
                 # Compute the propagator
-                C = np.exp(-0.5 * kprime**2 * p["sigma_nl"] ** 2)
-                propagator = 1.0 + splev(kprime, splrep(ks, pk_ratio)) * C
                 if self.param_dict["beta_phase_shift"].active:
-                    C = np.exp(-0.5 * kprime_varyphaseshift**2 * p["sigma_nl"] ** 2)
-                    propagator = 1.0 + splev(kprime_varyphaseshift, splrep(ks, pk_ratio)) * C
+                    C = np.exp(-0.5 * kprime_phaseshift**2 * p["sigma_nl"] ** 2)
+                    propagator = 1.0 + splev(kprime_phaseshift, splrep(ks, pk_ratio)) * C
+                else: 
+                    C = np.exp(-0.5 * kprime**2 * p["sigma_nl"] ** 2)
+                    propagator = 1.0 + splev(kprime, splrep(ks, pk_ratio)) * C
+                    
             prefac = np.ones(len(kprime)) if smooth else propagator
 
             if for_corr or nopoly:
@@ -169,7 +170,22 @@ class PowerBeutler2017(PowerSpectrumFit):
 
             epsilon = 0 if for_corr else p["epsilon"]
             kprime = np.tile(k, (self.nmu, 1)).T if for_corr else np.outer(k / p["alpha"], self.get_kprimefac(epsilon))
+            
+            # additional term for varying the phase shift added to kprime goes to zero when beta_face_shift = 1.0 (standard value of Neff=3.044) 
+            if self.param_dict["beta_phase_shift"].active:
+                rdrag_fid = self.camb.get_data(om=p["om"],Neff=p["Neff"])['r_s']
+                karr = np.tile(k, (self.nmu, 1)).T
+                kprime_phaseshift = kprime + (p['beta_phase_shift'] - 1.0)*self.fitting_func_ps(karr)/rdrag_fid
+            
             muprime = self.mu if for_corr else self.get_muprime(epsilon)
+            
+            # if self.param_dict["beta_phase_shift"].active:
+            #     alpha_para, alpha_perp = self.get_alphas(p["alpha"], epsilon)
+            #     F = alpha_para/alpha_perp 
+            #     muprime_phaseshift = (self.mu * karr / alpha_para) + (p['beta_phase_shift'] - 1.0)*self.fitting_func_ps(karr)/rdrag_fid  
+            #     muprime_phaseshift /= ( karr/alpha_perp * np.sqrt( self.mu**2 * (1.0/(F**2) - 1.0) + 1.0) + (p['beta_phase_shift'] - 1.0)*self.fitting_func_ps(karr)/rdrag_fid) 
+            
+            
             if self.dilate_smooth:
                 fog = 1.0 / (1.0 + muprime**2 * kprime**2 * p["sigma_s"] ** 2 / 2.0) ** 2
                 reconfac = splev(kprime, splrep(self.camb.ks, self.camb.smoothing_kernel)) if self.recon_type.lower() == "iso" else 0.0
@@ -192,8 +208,13 @@ class PowerBeutler2017(PowerSpectrumFit):
             if smooth:
                 pk2d = pk_smooth * fog
             else:
-                C = np.exp(-0.5 * kprime**2 * (muprime**2 * p["sigma_nl_par"] ** 2 + (1.0 - muprime**2) * p["sigma_nl_perp"] ** 2))
-                pk2d = pk_smooth * (fog + splev(kprime, splrep(ks, pk_ratio)) * C)
+                if self.param_dict['beta_phase_shift'].active:
+                    #C = np.exp(-0.5 * kprime_phaseshift**2 * (muprime_phaseshift**2 * p["sigma_nl_par"] ** 2 + (1.0 - muprime_phaseshift**2) * p["sigma_nl_perp"] ** 2))
+                    C = np.exp(-0.5 * kprime_phaseshift**2 * (muprime**2 * p["sigma_nl_par"] ** 2 + (1.0 - muprime**2) * p["sigma_nl_perp"] ** 2))
+                    pk2d = pk_smooth * (fog + splev(kprime_phaseshift, splrep(ks, pk_ratio)) * C)
+                else: 
+                    C = np.exp(-0.5 * kprime**2 * (muprime**2 * p["sigma_nl_par"] ** 2 + (1.0 - muprime**2) * p["sigma_nl_perp"] ** 2))
+                    pk2d = pk_smooth * (fog + splev(kprime, splrep(ks, pk_ratio)) * C)
 
             pk0, pk2, pk4 = self.integrate_mu(pk2d)
 
