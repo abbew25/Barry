@@ -45,7 +45,7 @@ if __name__ == "__main__":
                 max_k=0.30,
                 realisation=None,          # realisation=None loads the average of all the realisations
                 num_mocks=1000,            # Used for Hartlap/Sellentin correction if correction=Correction.HARTLAP or Correction.SELLENTIN
-                reduce_cov_factor=1,       # Use standard covariance, even for the average
+                reduce_cov_factor=25,       # Use standard covariance, even for the average
                 datafile=mockname+"_pk_elg.pkl",
                 #data_location="../prepare_data/",
                 data_location="/global/u1/a/abbew25/barryrepo/Barry/cosmodesi_KP4ELG_examplecode_make_picklefiles",
@@ -119,6 +119,9 @@ if __name__ == "__main__":
             allnames.append(name)
             
             # Now add the individual realisations to the list
+            
+            #print(len(dataset_pk.mock_data)) 
+            #exit() 
             for j in range(len(dataset_pk.mock_data)):
                 dataset_pk.set_realisation(j)
                 name = dataset_pk.name + f" realisation {j}"
@@ -163,7 +166,11 @@ if __name__ == "__main__":
                 
     # Set the sampler (dynesty) and assign 1 walker (processor) to each. If we assign more than one walker, for dynesty
     # this means running independent chains which will then get added together when they are loaded in.
+    outfile = fitter.temp_dir+pfn.split("/")[-1]+".fitter.pkl"
+    with open(outfile, 'wb') as pickle_file:
+        pickle.dump(fitter, pickle_file)
     
+    exit()
     
     fitter.set_sampler(sampler)
     fitter.set_num_walkers(1)
