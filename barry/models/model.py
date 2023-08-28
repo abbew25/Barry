@@ -14,6 +14,7 @@ from enum import Enum, unique
 from dataclasses import dataclass
 from functools import lru_cache
 import sys
+#sys.path.append("../../")
 
 from barry.cosmology.camb_generator import Omega_m_z, getCambGenerator
 

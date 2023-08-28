@@ -1,5 +1,5 @@
 import sys
-sys.path.append("../../")
+sys.path.append("../")
 import numpy as np
 from barry.models.bao_power import PowerSpectrumFit
 from scipy.interpolate import splev, splrep
@@ -150,7 +150,7 @@ class PowerBeutler2017(PowerSpectrumFit):
             else:
                 # Compute the propagator
                 if self.param_dict["beta_phase_shift"].active:
-                    C = np.exp(-0.5 * kprime_phaseshift**2 * p["sigma_nl"] ** 2)
+                    C = np.exp(-0.5 * kprime**2 * p["sigma_nl"] ** 2)
                     propagator = 1.0 + splev(kprime_phaseshift, splrep(ks, pk_ratio)) * C
                 else: 
                     C = np.exp(-0.5 * kprime**2 * p["sigma_nl"] ** 2)
@@ -210,7 +210,7 @@ class PowerBeutler2017(PowerSpectrumFit):
             else:
                 if self.param_dict['beta_phase_shift'].active:
                     #C = np.exp(-0.5 * kprime_phaseshift**2 * (muprime_phaseshift**2 * p["sigma_nl_par"] ** 2 + (1.0 - muprime_phaseshift**2) * p["sigma_nl_perp"] ** 2))
-                    C = np.exp(-0.5 * kprime_phaseshift**2 * (muprime**2 * p["sigma_nl_par"] ** 2 + (1.0 - muprime**2) * p["sigma_nl_perp"] ** 2))
+                    C = np.exp(-0.5 * kprime**2 * (muprime**2 * p["sigma_nl_par"] ** 2 + (1.0 - muprime**2) * p["sigma_nl_perp"] ** 2))
                     pk2d = pk_smooth * (fog + splev(kprime_phaseshift, splrep(ks, pk_ratio)) * C)
                 else: 
                     C = np.exp(-0.5 * kprime**2 * (muprime**2 * p["sigma_nl_par"] ** 2 + (1.0 - muprime**2) * p["sigma_nl_perp"] ** 2))

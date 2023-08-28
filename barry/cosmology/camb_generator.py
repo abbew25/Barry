@@ -5,6 +5,9 @@ import inspect
 import os
 import logging
 
+import sys 
+#sys.path.append("../../")
+
 
 # TODO: Add options for mnu, h0 default, omega_b, etc
 # TODO: add in regulargridinterpolator function for interpolating cosmologies 

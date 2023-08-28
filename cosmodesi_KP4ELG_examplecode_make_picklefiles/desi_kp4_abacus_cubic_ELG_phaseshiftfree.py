@@ -20,13 +20,13 @@ if __name__ == "__main__":
     #print(sys.path)
     # Set up the Fitting class and Dynesty sampler with 500 live points. 
     # Set remove_output=False to make sure that we don't delete/overwrite existing chains in the same directory.
-    fitter = Fitter(dir_name, remove_output=False)
+    fitter = Fitter(dir_name, remove_output=True)
     sampler = DynestySampler(temp_dir=dir_name, nlive=500)
     
     # The optimal sigma values we found when fitting the mocks with fixed alpha/epsilon
-    sigma_nl_par = {None: 8.7, "sym": 5.4}
-    sigma_nl_perp = {None: 4.0, "sym": 1.5}
-    sigma_s = {None: 3.5, "sym": 0.0}
+    sigma_nl_par = {None: 8.35, "sym": 5.22}
+    sigma_nl_perp = {None: 4.35, "sym": 2.75}
+    sigma_s = {None: 7.05, "sym": 5.90}
     
     # Loop over the mocktypes
     allnames = []
