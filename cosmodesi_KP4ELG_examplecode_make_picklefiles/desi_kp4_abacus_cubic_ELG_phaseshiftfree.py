@@ -74,7 +74,7 @@ if __name__ == "__main__":
                 #fix_params=[],
                 poly_poles=dataset_pk.fit_poles,
                 correction=Correction.NONE,               # No covariance matrix debiasing
-                n_poly=6,                                 # 6 polynomial terms for P(k)
+                n_poly=5,                                 # 6 polynomial terms for P(k)
                 vary_phase_shift_neff=True, 
             )
             #print(model.get_active_params())

@@ -208,7 +208,7 @@ class PowerSpectrumFit(Model):
         self.add_param("om", r"$\Omega_m$", 0.1, 0.5, 0.31)  # Cosmology
         self.add_param("Neff", r"$N_{\mathrm{eff}}$", 0.0, 5.0, 3.044)  # Cosmology 
         self.add_param("alpha", r"$\alpha$", 0.8, 1.2, 1.0)  # Stretch for monopole
-        self.add_param("beta_phase_shift", r"$\beta_{phi(N_{\mathrm{eff}})}$", -4.0, 6.0, 1.0) # phase shift parameter due to Neff 
+        self.add_param("beta_phase_shift", r"$\beta_{\phi(N_{\mathrm{eff}})}$", -4.0, 6.0, 1.0) # phase shift parameter due to Neff 
         if not self.isotropic:
             self.add_param("epsilon", r"$\epsilon$", -0.2, 0.2, 0.0)  # Stretch for multipoles
         

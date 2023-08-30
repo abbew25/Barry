@@ -134,6 +134,8 @@ class PowerBeutler2017(PowerSpectrumFit):
             if self.param_dict["beta_phase_shift"].active:
                 rdrag_fid = self.camb.get_data(om=p["om"],Neff=p["Neff"])['r_s']
                 kprime_phaseshift = kprime + (p['beta_phase_shift'] - 1.0)*self.fitting_func_ps(k)/rdrag_fid
+                #kprime_phaseshift = kprime + (p['beta_phase_shift'] - 1.0)*self.fitting_func_ps(kprime)/rdrag_fid
+                
                 
             if self.dilate_smooth:
                 pk_smooth = splev(kprime, splrep(ks, pk_smooth_lin)) / (1.0 + kprime**2 * p["sigma_s"] ** 2 / 2.0) ** 2
@@ -176,7 +178,8 @@ class PowerBeutler2017(PowerSpectrumFit):
                 rdrag_fid = self.camb.get_data(om=p["om"],Neff=p["Neff"])['r_s']
                 karr = np.tile(k, (self.nmu, 1)).T
                 kprime_phaseshift = kprime + (p['beta_phase_shift'] - 1.0)*self.fitting_func_ps(karr)/rdrag_fid
-            
+                #kprime_phaseshift = kprime + (p['beta_phase_shift'] - 1.0)*self.fitting_func_ps(kprime)/rdrag_fid
+                
             muprime = self.mu if for_corr else self.get_muprime(epsilon)
             
             # if self.param_dict["beta_phase_shift"].active:
