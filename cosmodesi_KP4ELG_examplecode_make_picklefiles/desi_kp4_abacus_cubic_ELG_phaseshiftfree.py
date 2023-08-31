@@ -25,7 +25,7 @@ if __name__ == "__main__":
     
     # The optimal sigma values we found when fitting the mocks with fixed alpha/epsilon
     sigma_nl_par = {None: 8.35, "sym": 5.22}
-    sigma_nl_perp = {None: 4.35, "sym": 2.75}
+    sigma_nl_perp = {None: 4.35, "sym": 1.6}
     sigma_s = {None: 7.05, "sym": 5.90}
     
     # Loop over the mocktypes

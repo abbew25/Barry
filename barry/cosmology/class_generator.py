@@ -8,7 +8,6 @@ import logging
 import sys 
 #sys.path.append("../../")
 
-
 # TODO: Add options for mnu, h0 default, omega_b, etc
 # TODO: add in regulargridinterpolator function for interpolating cosmologies 
 
@@ -67,7 +66,7 @@ class CLASSGenerator(object):
     """
 
     def __init__( 
-        self, redshift=0.61, om_resolution=101, h0_resolution=1, h0=0.676, ob=0.04814, ns=0.97, mnu=0.0, recon_smoothing_scale=21.21, vary_neff=False, Neff=3.044, neff_resolution=1,
+        self, redshift=0.61, om_resolution=101, h0_resolution=1, h0=0.676, ob=0.04814, ns=0.97, mnu = 0.0, recon_smoothing_scale=21.21, vary_neff=False, Neff=3.044, neff_resolution=1,
     ):
         """
         Precomputes CLASS for efficiency. Access ks via self.ks, and use get_data for an array
@@ -109,7 +108,7 @@ class CLASSGenerator(object):
         if neff_resolution == 1:
             self.neffs = [Neff]
         else:
-            self.neffs = np.linspace(3.044, 5., self.neff_resolution)
+            self.neffs = np.linspace(1.013, 6.013, self.neff_resolution)
 
         self.data = None
         if not vary_neff:
@@ -168,8 +167,7 @@ class CLASSGenerator(object):
         os.makedirs(self.data_dir, exist_ok=True)
         from classy import Class 
         M = Class() 
-        neutrino_mass_input = str(self.mnu)/3 + ',' + str(self.mnu)/3 + ',' + str(self.mnu)/3 # just letting 1 massive neutrino and 2 massless - mass hierarchy doesn't have too much 
-        # effect on cosmological constraints.
+        neutrino_mass_input = str(self.mnu) # just letting 1 massive neutrino - mass hierarchy/number doesn't have too much effect on cosmological constraints..
         self.logger.info("Initiated CLASS object.")
 
         data = np.zeros((self.om_resolution, self.h0_resolution, 1 + 3 * self.k_num))
@@ -184,14 +182,13 @@ class CLASSGenerator(object):
                         
                         self.logger.info("Generating %d:%d:%d  %0.4f  %0.4f  %0.4f" % (i, j, k, omch2, h0, neff))
                         
-                        #print(neff-3.046)
                         M.set({
                         "omega_b": self.omega_b *h0 * h0, 
                         "omega_cdm": omch2, 
                         "H0": h0 * 100.0, 
                         "A_s": 2.083e-9, 
-                        "N_ur": 0.00641+(neff-3.044),  
-                        "N_ncdm": 3.0,  
+                        "N_ur": (neff-1.013),  
+                        "N_ncdm": 1.0,  
                         "m_ncdm": neutrino_mass_input, 
                         "tau_reio": 0.066, 
                         "n_s": self.ns
@@ -208,6 +205,7 @@ class CLASSGenerator(object):
                         data[i, j, k, 1 + 2*self.k_num :] = np.array([M.pk(ki, self.redshift) /(h0 * h0 * h0) for ki in ks_fid]) 
             
                         data[i, j, k, 0] = M.rs_drag() * h0
+                
                         
                 else:
                     
@@ -218,8 +216,8 @@ class CLASSGenerator(object):
                         "omega_cdm": omch2, 
                         "H0": h0 * 100.0, 
                         "A_s": 2.083e-9, 
-                        "N_ur": 0.00641+(self.Neff-3.046),  
-                        "N_ncdm": 3.0,  
+                        "N_ur": (self.Neff-1.013),  
+                        "N_ncdm": 1.0,  
                         "m_ncdm": neutrino_mass_input, 
                         "tau_reio": 0.066, 
                         "n_s": self.ns
@@ -236,6 +234,8 @@ class CLASSGenerator(object):
                     data[i, j, 1 + 2*self.k_num :] = np.array([M.pk(ki, self.redshift) /(h0 * h0 * h0) for ki in ks_fid]) 
 
                     data[i, j, 0] = M.rs_drag() * h0
+                    
+                    #print(M.Neff())
 
                     
         if savedata:
@@ -367,6 +367,7 @@ class CLASSGenerator(object):
 
 def test_rand_h0const():
     g = CLASSGenerator()
+    #g._generate_data()
     g.load_data()
 
     def fn():
@@ -385,14 +386,14 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format="[%(levelname)7s |%(funcName)15s]   %(message)s")
     logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
-    # c = getCLASSGenerator(redshift=0.1, Neff=3.044, h0_resolution=3, om_resolution=5)#, vary_neff=True, neff_resolution=3)
+    # c = getCLASSGenerator(redshift=0.1, Neff=3.044, h0_resolution=1, om_resolution=1, vary_neff=False, neff_resolution=3)
     
-    #c._generate_data()
+    # c._generate_data()
 
     #n = 10000
     #print("Takes on average, %.1f microseconds" % (timeit.timeit(test_rand_h0const(), number=n) * 1e6 / n))
 
-#     plt.plot(c.ks, c.get_data(0.2, 0.75)["pk_lin"], color="b", linestyle="-", label=r"$\mathrm{Linear}\,\Omega_{m}=0.2\,h_0=0.75$")
+    # plt.plot(c.ks, c.get_data(Neff=3.044)["pk_lin"], color="b", linestyle="-")#, label=r"$\mathrm{Linear}\,\Omega_{m}=0.2\,h_0=0.75$")
 #     plt.plot(c.ks, c.get_data(0.3, 0.75)["pk_lin"], color="r", linestyle="-", label=r"$\mathrm{Linear}\,\Omega_{m}=0.3\,h_0=0.75$")
 #     plt.plot(c.ks, c.get_data(0.2, 0.75)["pk_nl_z"], color="b", linestyle="--", label=r"$\mathrm{Halofit}\,\Omega_{m}=0.2\,h_0=0.75$")
 #     plt.plot(c.ks, c.get_data(0.3, 0.75)["pk_nl_z"], color="r", linestyle="--", label=r"$\mathrm{Halofit}\,\Omega_{m}=0.3\,h_0=0.75$")
@@ -409,23 +410,23 @@ if __name__ == "__main__":
 #     plt.show()
     
     
-    c2 = getCLASSGenerator(redshift=0.1, Neff=3.044, h0_resolution=1, om_resolution=1, vary_neff=True, neff_resolution=10)
+    # c2 = getCLASSGenerator(redshift=0.1, Neff=3.044, h0_resolution=1, om_resolution=1, vary_neff=True, neff_resolution=10)
     #c2._generate_data()
     
     #n = 10000
     #print("Takes on average, %.1f microseconds" % (timeit.timeit(test_rand_h0const(), number=n) * 1e6 / n))
     
-    relpower = c2.get_data(Neff=3.0)["pk_lin"]
-    plt.plot(c2.ks, c2.get_data(Neff=3., h0=0.6, om=0.3)["pk_lin"]/relpower, color="b", linestyle="-", 
-             label=r"$\mathrm{Linear}\,h_0=0.6\,\Omega_m=0.3\,$Neff=3.")
-    plt.plot(c2.ks, c2.get_data(Neff=4.5, h0=0.6, om=0.3)["pk_lin"]/relpower, color="g", linestyle=":", 
-             label=r"$\mathrm{Linear}\,h_0=0.6\,\Omega_m=0.3\,$Neff=4.5")
-    plt.plot(c2.ks, c2.get_data(Neff=3., h0=0.7, om=0.3)["pk_lin"]/relpower, color="r", linestyle="-.", 
-             label=r"$\mathrm{Linear}\,h_0=0.7\,\Omega_m=0.3\,$Neff=3")
-    plt.plot(c2.ks, c2.get_data(Neff=4.5, h0=0.7, om=0.3)["pk_lin"]/relpower, color="y", linestyle="--", 
-             label=r"$\mathrm{Linear}\,h_0=0.7\,\Omega_m=0.3\,$Neff=4.5")
+#     relpower = c2.get_data(Neff=3.0)["pk_lin"]
+#     plt.plot(c2.ks, c2.get_data(Neff=3., h0=0.6, om=0.3)["pk_lin"]/relpower, color="b", linestyle="-", 
+#              label=r"$\mathrm{Linear}\,h_0=0.6\,\Omega_m=0.3\,$Neff=3.")
+#     plt.plot(c2.ks, c2.get_data(Neff=4.5, h0=0.6, om=0.3)["pk_lin"]/relpower, color="g", linestyle=":", 
+#              label=r"$\mathrm{Linear}\,h_0=0.6\,\Omega_m=0.3\,$Neff=4.5")
+#     plt.plot(c2.ks, c2.get_data(Neff=3., h0=0.7, om=0.3)["pk_lin"]/relpower, color="r", linestyle="-.", 
+#              label=r"$\mathrm{Linear}\,h_0=0.7\,\Omega_m=0.3\,$Neff=3")
+#     plt.plot(c2.ks, c2.get_data(Neff=4.5, h0=0.7, om=0.3)["pk_lin"]/relpower, color="y", linestyle="--", 
+#              label=r"$\mathrm{Linear}\,h_0=0.7\,\Omega_m=0.3\,$Neff=4.5")
     
-#     plt.plot(c2.ks, c2.get_data(Neff=1., h0=0.6, om=0.2)["pk_lin"]/relpower, color="b", linestyle="-", 
+# #     plt.plot(c2.ks, c2.get_data(Neff=1., h0=0.6, om=0.2)["pk_lin"]/relpower, color="b", linestyle="-", 
 #              label=r"$\mathrm{Linear}\,h_0=0.6\,\Omega_m=0.2\,$Neff=2.")
 #     plt.plot(c2.ks, c2.get_data(Neff=4.5, h0=0.6, om=0.2)["pk_lin"]/relpower, color="g", linestyle=":", 
 #              label=r"$\mathrm{Linear}\,h_0=0.6\,\Omega_m=0.2\,$Neff=3.5")
@@ -438,19 +439,19 @@ if __name__ == "__main__":
     
 #     plt.plot(c2.ks, c2.get_data(Neff=2.5)["pk_nl_z"]/relpower, color="b", linestyle="--", label=r"$\mathrm{Halofit}\,$Neff=2.5")
 #     plt.plot(c2.ks, c2.get_data(Neff=3.5)["pk_nl_z"]/relpower, color="r", linestyle="--", label=r"$\mathrm{Halofit}\,$Neff=3.5")
+    # plt.xscale("log")
+    # plt.yscale("log")
+    # plt.legend()
+    # plt.savefig('test2_class.png')
+    # plt.show()
+    
+    
+    c1 = getCLASSGenerator(Neff=3.045, h0_resolution=3, om_resolution=1)
+    c1._generate_data()
+
+    plt.plot(c1.ks, c1.get_data()["pk_lin"], color="b", linestyle="-")
     plt.xscale("log")
     plt.yscale("log")
     plt.legend()
-    plt.savefig('test2_class.png')
+    plt.savefig('test1_class.png')
     plt.show()
-    
-    
-#     c1 = getCambGenerator(neff=3.045, h0_resolution=3, om_resolution=1)
-#     c1._generate_data()
-
-#     plt.plot(c1.ks, c1.get_data()["pk_lin"], color="b", linestyle="-")
-#     plt.xscale("log")
-#     plt.yscale("log")
-#     plt.legend()
-#     plt.savefig('test1.png')
-#     plt.show()
