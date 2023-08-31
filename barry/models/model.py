@@ -17,7 +17,7 @@ import sys
 #sys.path.append("../../")
 
 from barry.cosmology.camb_generator import Omega_m_z, getCambGenerator
-
+from barry.cosmology.class_generator import getCLASSGenerator
 
 @dataclass
 class Param:
@@ -53,7 +53,7 @@ class Model(ABC):
 
     """
 
-    def __init__(self, name, postprocess=None, correction=None, isotropic=False, marg=None, n_data=1):
+    def __init__(self, name, postprocess=None, correction=None, isotropic=False, marg=None, n_data=1, use_classorcamb='CAMB'):
         """Create a new model.
 
         Parameters
@@ -74,7 +74,8 @@ class Model(ABC):
         self.n_data = n_data
 
         # For pregeneration
-        self.camb = None
+        self.camb = None 
+        self.use_classorcamb = use_classorcamb
         self.cosmology = None
         self.isotropic = isotropic
         self.pregen = None
@@ -116,7 +117,7 @@ class Model(ABC):
     def get_unique_cosmo_name(self):
         """Unique name used to save out any pregenerated data."""
         return self.__class__.__name__ + "_" + self.camb.filename_unique + ".pkl"
-
+`
     def set_cosmology(self, c, load_pregen=True):
         z = c["z"]
         if self.param_dict.get("f") is not None:
@@ -142,25 +143,58 @@ class Model(ABC):
                 self.logger.info(f"Neff varying and resolution set to {neff_resolution}")
                
             if "om" in self.fix_params:
-                self.camb = getCambGenerator(
-                    om_resolution=1,
-                    h0=c["h0"],
-                    ob=c["ob"],
-                    redshift=c["z"],
-                    ns=c["ns"],
-                    mnu=c["mnu"],
-                    recon_smoothing_scale=c["reconsmoothscale"],
-                    neff_resolution=neff_resolution,
-                    vary_neff=vary_neff,
-                    Neff=Neff,
-                )
+                
+                if self.use_classorcamb == 'CAMB':
+                    
+                    self.camb = getCambGenerator(
+                        om_resolution=1,
+                        h0=c["h0"],
+                        ob=c["ob"],
+                        redshift=c["z"],
+                        ns=c["ns"],
+                        mnu=c["mnu"],
+                        recon_smoothing_scale=c["reconsmoothscale"],
+                        neff_resolution=neff_resolution,
+                        vary_neff=vary_neff,
+                        Neff=Neff,
+                    )
+                elif self.use_classorcamb == 'CLASS':
+                    
+                    self.camb = getCLASSGenerator(
+                        om_resolution=1,
+                        h0=c["h0"],
+                        ob=c["ob"],
+                        redshift=c["z"],
+                        ns=c["ns"],
+                        mnu=c["mnu"],
+                        recon_smoothing_scale=c["reconsmoothscale"],
+                        neff_resolution=neff_resolution,
+                        vary_neff=vary_neff,
+                        Neff=Neff,
+                    )
+                
                 self.camb.omch2s = [(self.get_default("om") - c["ob"]) * c["h0"] ** 2 - c["mnu"] / 93.14]
 
             else:
-                self.camb = getCambGenerator(
-                    h0=c["h0"], ob=c["ob"], redshift=c["z"], ns=c["ns"], mnu=c["mnu"], recon_smoothing_scale=c["reconsmoothscale"],
-                    neff_resolution=neff_resolution, vary_neff=vary_neff, Neff=Neff,
-                )
+                
+                if self.use_classorcamb == 'CAMB':
+                    
+                    self.camb = getCambGenerator(
+                        h0=c["h0"], ob=c["ob"], 
+                        redshift=c["z"], ns=c["ns"], 
+                        mnu=c["mnu"], recon_smoothing_scale=c["reconsmoothscale"],
+                        neff_resolution=neff_resolution, vary_neff=vary_neff, Neff=Neff,
+                    )
+                    
+                elif self.use_classorcamb == 'CLASS':
+                    
+                    self.camb = getCLASSGenerator(
+                        h0=c["h0"], ob=c["ob"], 
+                        redshift=c["z"], ns=c["ns"], 
+                        mnu=c["mnu"], recon_smoothing_scale=c["reconsmoothscale"],
+                        neff_resolution=neff_resolution, vary_neff=vary_neff, Neff=Neff,
+                    )
+                    
             self.pregen_path = os.path.abspath(os.path.join(self.data_location, self.get_unique_cosmo_name()))
             self.cosmology = c
             if load_pregen:

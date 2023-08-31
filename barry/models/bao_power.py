@@ -32,6 +32,7 @@ class PowerSpectrumFit(Model):
         data_share_poly=False,
         vary_phase_shift_neff=False, 
         vary_neff=False,
+        use_classorcamb='CAMB'
     ):
         """Generic power spectrum function model
 
@@ -61,7 +62,7 @@ class PowerSpectrumFit(Model):
             
         fix_params = tuple(fix_params) 
         
-        super().__init__(name, postprocess=postprocess, correction=correction, isotropic=isotropic, marg=marg, n_data=n_data)
+        super().__init__(name, postprocess=postprocess, correction=correction, isotropic=isotropic, marg=marg, n_data=n_data, use_classorcamb=use_classorcamb)
         if smooth_type is None:
             smooth_type = {"method": "hinton2017"}
         self.smooth_type = smooth_type

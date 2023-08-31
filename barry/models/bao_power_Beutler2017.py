@@ -31,6 +31,7 @@ class PowerBeutler2017(PowerSpectrumFit):
         data_share_poly=False,
         vary_neff=False,
         vary_phase_shift_neff=False,
+        use_classorcamb='CAMB'
     ):
 
         self.dilate_smooth = dilate_smooth
@@ -52,6 +53,7 @@ class PowerBeutler2017(PowerSpectrumFit):
             data_share_poly=data_share_poly,
             vary_neff=vary_neff,
             vary_phase_shift_neff=vary_phase_shift_neff,
+            use_classorcamb=useclassorcamb,
         )
         
         fix_params = [param for param in fix_params]
