@@ -210,6 +210,8 @@ class CambGenerator(object):
                         data[i, j, k, 1 : 1 + self.k_num] = pk_lin[1, :]
                         data[i, j, k, 1 + self.k_num :] = pk_nonlin.flatten()
                         
+                        #print(rdrag)
+                        
                 else:
                     
                     self.logger.info("Generating %d:%d  %0.4f  %0.4f" % (i, j, omch2, h0))
@@ -229,13 +231,15 @@ class CambGenerator(object):
                     params = results.get_derived_params()
                     rdrag = params["rdrag"]* h0
                     kh, z, pk_lin = results.get_matter_power_spectrum(minkh=self.k_min, maxkh=self.k_max, npoints=self.k_num)
-                    print(z)
+                    #print(z)
                     pars.NonLinear = camb.model.NonLinear_pk
                     results.calc_power_spectra(pars)
                     kh, z, pk_nonlin = results.get_matter_power_spectrum(minkh=self.k_min, maxkh=self.k_max, npoints=self.k_num)
                     data[i, j, 0] = rdrag
                     data[i, j, 1 : 1 + self.k_num] = pk_lin[1, :]
                     data[i, j, 1 + self.k_num :] = pk_nonlin.flatten()
+                    
+                    #print(rdrag)
 
                     
         if savedata:
