@@ -53,7 +53,7 @@ class PowerBeutler2017(PowerSpectrumFit):
             data_share_poly=data_share_poly,
             vary_neff=vary_neff,
             vary_phase_shift_neff=vary_phase_shift_neff,
-            use_classorcamb=useclassorcamb,
+            use_classorcamb=use_classorcamb,
         )
         
         fix_params = [param for param in fix_params]
@@ -171,7 +171,7 @@ class PowerBeutler2017(PowerSpectrumFit):
                     pk[0] = (pk_smooth + shape) * propagator
 
         else:
-
+            
             epsilon = 0 if for_corr else p["epsilon"]
             kprime = np.tile(k, (self.nmu, 1)).T if for_corr else np.outer(k / p["alpha"], self.get_kprimefac(epsilon))
             
@@ -222,7 +222,7 @@ class PowerBeutler2017(PowerSpectrumFit):
                     pk2d = pk_smooth * (fog + splev(kprime, splrep(ks, pk_ratio)) * C)
 
             pk0, pk2, pk4 = self.integrate_mu(pk2d)
-
+            
             # Polynomial shape
             pk = [pk0, np.zeros(len(k)), pk2, np.zeros(len(k)), pk4, np.zeros(len(k))]
             
@@ -236,7 +236,7 @@ class PowerBeutler2017(PowerSpectrumFit):
                 else:
                     for pole in self.poly_poles:
                         pk[pole] += shape[pole]
-
+            
         return kprime, pk, poly
 
 

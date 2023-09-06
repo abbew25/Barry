@@ -117,7 +117,7 @@ class Model(ABC):
     def get_unique_cosmo_name(self):
         """Unique name used to save out any pregenerated data."""
         return self.__class__.__name__ + "_" + self.camb.filename_unique + ".pkl"
-`
+
     def set_cosmology(self, c, load_pregen=True):
         z = c["z"]
         if self.param_dict.get("f") is not None:
@@ -144,56 +144,85 @@ class Model(ABC):
                
             if "om" in self.fix_params:
                 
-                if self.use_classorcamb == 'CAMB':
+                try: 
+                    if self.use_classorcamb == 'CAMB':
+
+                        self.camb = getCambGenerator(
+                            om_resolution=1,
+                            h0=c["h0"],
+                            ob=c["ob"],
+                            redshift=c["z"],
+                            ns=c["ns"],
+                            mnu=c["mnu"],
+                            recon_smoothing_scale=c["reconsmoothscale"],
+                            neff_resolution=neff_resolution,
+                            vary_neff=vary_neff,
+                            Neff=Neff,
+                        )
+                    elif self.use_classorcamb == 'CLASS':
+
+                        self.camb = getCLASSGenerator(
+                            om_resolution=1,
+                            h0=c["h0"],
+                            ob=c["ob"],
+                            redshift=c["z"],
+                            ns=c["ns"],
+                            mnu=c["mnu"],
+                            recon_smoothing_scale=c["reconsmoothscale"],
+                            neff_resolution=neff_resolution,
+                            vary_neff=vary_neff,
+                            Neff=Neff,
+                        )
+                except:
                     
+                    print("Exception raised, probably because self.use_classorcamb hasn't been initiated in the model class (option to use CLASS or CAMB did not exist in previous versions of Barry and this may raise a bug in loading a model from a pickle file). Defaulting to use CAMB.")
+                    
+                    self.logger.info("Exception raised, probably because self.use_classorcamb hasn't been initiated in the model class (option to use CLASS or CAMB did not exist in previous versions of Barry and this may raise a bug in loading a model from a pickle file). Defaulting to use CAMB.")
                     self.camb = getCambGenerator(
-                        om_resolution=1,
-                        h0=c["h0"],
-                        ob=c["ob"],
-                        redshift=c["z"],
-                        ns=c["ns"],
-                        mnu=c["mnu"],
-                        recon_smoothing_scale=c["reconsmoothscale"],
-                        neff_resolution=neff_resolution,
-                        vary_neff=vary_neff,
-                        Neff=Neff,
-                    )
-                elif self.use_classorcamb == 'CLASS':
-                    
-                    self.camb = getCLASSGenerator(
-                        om_resolution=1,
-                        h0=c["h0"],
-                        ob=c["ob"],
-                        redshift=c["z"],
-                        ns=c["ns"],
-                        mnu=c["mnu"],
-                        recon_smoothing_scale=c["reconsmoothscale"],
-                        neff_resolution=neff_resolution,
-                        vary_neff=vary_neff,
-                        Neff=Neff,
-                    )
-                
+                            om_resolution=1,
+                            h0=c["h0"],
+                            ob=c["ob"],
+                            redshift=c["z"],
+                            ns=c["ns"],
+                            mnu=c["mnu"],
+                            recon_smoothing_scale=c["reconsmoothscale"],
+                            neff_resolution=neff_resolution,
+                            vary_neff=vary_neff,
+                            Neff=Neff,
+                        )
+
                 self.camb.omch2s = [(self.get_default("om") - c["ob"]) * c["h0"] ** 2 - c["mnu"] / 93.14]
 
             else:
                 
-                if self.use_classorcamb == 'CAMB':
+                try: 
+                    if self.use_classorcamb == 'CAMB':
+
+                        self.camb = getCambGenerator(
+                            h0=c["h0"], ob=c["ob"], 
+                            redshift=c["z"], ns=c["ns"], 
+                            mnu=c["mnu"], recon_smoothing_scale=c["reconsmoothscale"],
+                            neff_resolution=neff_resolution, vary_neff=vary_neff, Neff=Neff,
+                        )
+
+                    elif self.use_classorcamb == 'CLASS':
+
+                        self.camb = getCLASSGenerator(
+                            h0=c["h0"], ob=c["ob"], 
+                            redshift=c["z"], ns=c["ns"], 
+                            mnu=c["mnu"], recon_smoothing_scale=c["reconsmoothscale"],
+                            neff_resolution=neff_resolution, vary_neff=vary_neff, Neff=Neff,
+                        )
+                except: 
+                    print("Exception raised, probably because self.use_classorcamb hasn't been initiated in the model class (option to use CLASS or CAMB did not exist in previous versions of Barry and this may raise a bug in loading a model from a pickle file). Defaulting to use CAMB.")
+                    self.logger.info("Exception raised, probably because self.use_classorcamb hasn't been initiated in the model class (option to use CLASS or CAMB did not exist in previous versions of Barry and this may raise a bug in loading a model from a pickle file). Defaulting to use CAMB.")
                     
                     self.camb = getCambGenerator(
-                        h0=c["h0"], ob=c["ob"], 
-                        redshift=c["z"], ns=c["ns"], 
-                        mnu=c["mnu"], recon_smoothing_scale=c["reconsmoothscale"],
-                        neff_resolution=neff_resolution, vary_neff=vary_neff, Neff=Neff,
-                    )
-                    
-                elif self.use_classorcamb == 'CLASS':
-                    
-                    self.camb = getCLASSGenerator(
-                        h0=c["h0"], ob=c["ob"], 
-                        redshift=c["z"], ns=c["ns"], 
-                        mnu=c["mnu"], recon_smoothing_scale=c["reconsmoothscale"],
-                        neff_resolution=neff_resolution, vary_neff=vary_neff, Neff=Neff,
-                    )
+                            h0=c["h0"], ob=c["ob"], 
+                            redshift=c["z"], ns=c["ns"], 
+                            mnu=c["mnu"], recon_smoothing_scale=c["reconsmoothscale"],
+                            neff_resolution=neff_resolution, vary_neff=vary_neff, Neff=Neff,
+                        )
                     
             self.pregen_path = os.path.abspath(os.path.join(self.data_location, self.get_unique_cosmo_name()))
             self.cosmology = c
