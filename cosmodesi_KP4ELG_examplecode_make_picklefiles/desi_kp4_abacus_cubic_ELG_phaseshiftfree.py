@@ -76,6 +76,7 @@ if __name__ == "__main__":
                 correction=Correction.NONE,               # No covariance matrix debiasing
                 n_poly=5,                                 # 6 polynomial terms for P(k)
                 vary_phase_shift_neff=True, 
+                use_classorcamb='CLASS',
             )
             #print(model.get_active_params())
             #exit()
