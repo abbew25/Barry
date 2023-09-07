@@ -8,16 +8,15 @@ import logging
 import sys 
 #sys.path.append("../../")
 
-
 # TODO: Add options for mnu, h0 default, omega_b, etc
 # TODO: add in regulargridinterpolator function for interpolating cosmologies 
 
 @lru_cache(maxsize=32)
-def getCambGenerator(
+def getCLASSGenerator(
     redshift=0.51, om_resolution=101, h0_resolution=1, h0=0.676, ob=0.04814, ns=0.97, mnu=0.0, recon_smoothing_scale=21.21, Neff=3.044,
     neff_resolution=1, vary_neff=False,):
     
-    return CambGenerator(
+    return CLASSGenerator(
         redshift=redshift,
         om_resolution=om_resolution,
         h0_resolution=h0_resolution,
@@ -36,8 +35,8 @@ def Omega_m_z(omega_m, z):
     """
     Computes the matter density at redshift based on the present day value.
 
-    Assumes Flat LCDM cosmology, which is fine given this is also assumed in CambGenerator. Possible improvement
-    could be to tabulate this using the CambGenerator so that it would be self consistent for non-LCDM cosmologies.
+    Assumes Flat LCDM cosmology, which is fine given this is also assumed in Camb/CLASSGenerator. Possible improvement
+    could be to tabulate this using the Camb/CLASSGenerator so that it would be self consistent for non-LCDM cosmologies.
 
     :param omega_m: the matter density at the present day
     :param z: the redshift we want the matter density at
@@ -50,8 +49,8 @@ def E_z(omega_m, z):
     """
     Compute the E-function; the ratio of the Hubble parameter at redshift z to the Hubble-Lemaitre constant.
 
-    Assumes Flat LCDM cosmology, which is fine given this is also assumed in CambGenerator. Would not be necessary if
-    we tabulated Omega_m_z using the CambGenerator.
+    Assumes Flat LCDM cosmology, which is fine given this is also assumed in Camb/ClASSGenerator. Would not be necessary if
+    we tabulated Omega_m_z using the Camb/CLASSGenerator.
 
     :param omega_m: the matter density at the present day
     :param z: the redshift we want the E-function at
@@ -60,17 +59,17 @@ def E_z(omega_m, z):
     return np.sqrt((1.0 + z) ** 3 * omega_m + (1.0 - omega_m))
 
 
-class CambGenerator(object):
-    """An object to generate power spectra using camb and save them to file.
+class CLASSGenerator(object):
+    """An object to generate power spectra using CLASS and save them to file.
 
     Useful because computing them in a likelihood step is insanely slow.
     """
 
     def __init__( 
-        self, redshift=0.61, om_resolution=101, h0_resolution=1, h0=0.676, ob=0.04814, ns=0.97, mnu=0.0, recon_smoothing_scale=21.21, vary_neff=False, Neff=3.044, neff_resolution=1,
+        self, redshift=0.61, om_resolution=101, h0_resolution=1, h0=0.676, ob=0.04814, ns=0.97, mnu = 0.0, recon_smoothing_scale=21.21, vary_neff=False, Neff=3.044, neff_resolution=1,
     ):
         """
-        Precomputes CAMB for efficiency. Access ks via self.ks, and use get_data for an array
+        Precomputes CLASS for efficiency. Access ks via self.ks, and use get_data for an array
         of both the linear and non-linear power spectrum
         """
         self.logger = logging.getLogger("barry")
@@ -87,7 +86,7 @@ class CambGenerator(object):
         self.filename_unique = f"{int(self.redshift * 1000)}_{self.om_resolution}_{self.h0_resolution}_{hh}_{int(ob * 10000)}_{int(ns * 1000)}_{int(mnu * 10000)}"
         if vary_neff: 
             self.filename_unique = f"{int(self.redshift * 1000)}_{self.om_resolution}_{self.h0_resolution}_{self.neff_resolution}_{hh}_{int(ob * 10000)}_{int(ns * 1000)}_{int(mnu * 10000)}"
-        self.filename = self.data_dir + f"/camb_{self.filename_unique}.npy"
+        self.filename = self.data_dir + f"/class_{self.filename_unique}.npy"
         self.k_min = 1e-4
         self.k_max = 100
         self.k_num = 2000
@@ -109,13 +108,13 @@ class CambGenerator(object):
         if neff_resolution == 1:
             self.neffs = [Neff]
         else:
-            self.neffs = np.linspace(0., 5., self.neff_resolution)
+            self.neffs = np.linspace(1.013, 6.013, self.neff_resolution)
 
         self.data = None
         if not vary_neff:
-            self.logger.info(f"Creating CAMB data with {self.om_resolution} x {self.h0_resolution}")
+            self.logger.info(f"Creating CLASS data with {self.om_resolution} x {self.h0_resolution}")
         else:
-            self.logger.info(f"Creating CAMB data with {self.om_resolution} x {self.h0_resolution} x {self.neff_resolution}")
+            self.logger.info(f"Creating CLASS data with {self.om_resolution} x {self.h0_resolution} x {self.neff_resolution}")
 
     def load_data(self, can_generate=False):
         if not os.path.exists(self.filename):
@@ -128,7 +127,7 @@ class CambGenerator(object):
                 self.data = self._generate_data()
         else:
             self.data = np.load(self.filename)
-            self.logger.info("Loading existing CAMB data")
+            self.logger.info("Loading existing CLASS data")
 
     @lru_cache(maxsize=512)
     def get_data(self, om=0.31, h0=None, Neff=None): # gets the data at given cosmo, loads it if its already computed but calculates it if needed also. 
@@ -138,9 +137,9 @@ class CambGenerator(object):
         if Neff is None:
             Neff = self.Neff
         if self.data is None:
-            # If we are not interested in varying om, we can run CAMB this once to avoid precomputing
+            # If we are not interested in varying om, we can run CLASS this once to avoid precomputing
             if self.singleval:
-                self.logger.info(f"Running CAMB")
+                self.logger.info(f"Running CLASS")
                 self.data = self._generate_data(savedata=False)[0, 0]
             else:
                 self.load_data()
@@ -161,18 +160,15 @@ class CambGenerator(object):
 
     def _generate_data(self, savedata=True): # this function loops through the arrays on values for om, h0, neff etc. that we want to vary and saves the power spectra for each cosmology to an array - gets cosmo at z = 0 and 1 specified redshift 
         if self.vary_neff:
-            self.logger.info(f"Generating CAMB data with {self.om_resolution} x {self.h0_resolution} x {self.neff_resolution}")
+            self.logger.info(f"Generating CLASS data with {self.om_resolution} x {self.h0_resolution} x {self.neff_resolution}")
         else:
-            self.logger.info(f"Generating CAMB data with {self.om_resolution} x {self.h0_resolution}")
+            self.logger.info(f"Generating CLASS data with {self.om_resolution} x {self.h0_resolution}")
             
         os.makedirs(self.data_dir, exist_ok=True)
-        import camb
-
-        pars = camb.CAMBparams()
-        pars.set_dark_energy(w=-1.0, dark_energy_model="fluid")
-        pars.InitPower.set_params(As=2.083e-9, ns=self.ns)
-        pars.set_matter_power(redshifts=[self.redshift, 0.0], kmax=self.k_max)
-        self.logger.info("Configured CAMB power and dark energy")
+        from classy import Class 
+        M = Class() 
+        neutrino_mass_input = str(self.mnu) # just letting 1 massive neutrino - mass hierarchy/number doesn't have too much effect on cosmological constraints..
+        self.logger.info("Initiated CLASS object.")
 
         data = np.zeros((self.om_resolution, self.h0_resolution, 1 + 3 * self.k_num))
         if self.vary_neff: 
@@ -181,65 +177,69 @@ class CambGenerator(object):
         for i, omch2 in enumerate(self.omch2s):
             for j, h0 in enumerate(self.h0s):
 
-                
                 if self.vary_neff: 
                     for k, neff in enumerate(self.neffs):
                         
                         self.logger.info("Generating %d:%d:%d  %0.4f  %0.4f  %0.4f" % (i, j, k, omch2, h0, neff))
-                        pars.set_cosmology(
-                            H0=h0 * 100,
-                            omch2=omch2,
-                            mnu=self.mnu,
-                            ombh2=self.omega_b * h0 * h0,
-                            omk=0.0,
-                            tau=0.066,
-                            neutrino_hierarchy="degenerate",
-                            num_massive_neutrinos=3,
-                            nnu=neff, 
-                        )
                         
-                        pars.NonLinear = camb.model.NonLinear_none
-                        results = camb.get_results(pars)
-                        params = results.get_derived_params()
-                        rdrag = params["rdrag"]* h0
-                        kh, z, pk_lin = results.get_matter_power_spectrum(minkh=self.k_min, maxkh=self.k_max, npoints=self.k_num) 
-                        pars.NonLinear = camb.model.NonLinear_pk
-                        results.calc_power_spectra(pars)
-                        kh, z, pk_nonlin = results.get_matter_power_spectrum(minkh=self.k_min, maxkh=self.k_max, npoints=self.k_num)
-                        data[i, j, k, 0] = rdrag
-                        data[i, j, k, 1 : 1 + self.k_num] = pk_lin[1, :]
-                        data[i, j, k, 1 + self.k_num :] = pk_nonlin.flatten()
+                        M.set({
+                        "omega_b": self.omega_b *h0 * h0, 
+                        "omega_cdm": omch2, 
+                        "H0": h0 * 100.0, 
+                        "A_s": 2.083e-9, 
+                        "N_ur": (neff-1.013),  
+                        "N_ncdm": 1.0,  
+                        "m_ncdm": neutrino_mass_input, 
+                        "tau_reio": 0.066, 
+                        "n_s": self.ns
+                        })
                         
-                        #print(rdrag)
+                        M.set({"output": "mPk", "P_k_max_1/Mpc": self.k_max, "z_max_pk": self.redshift})
+                        ks_fid = np.logspace(np.log(self.k_min * h0), np.log(self.k_max * h0), self.k_num, base=np.e) # ks in 1/ MPC unit
+                        M.compute()
+                        data[i, j, k, 1 : 1 + self.k_num] = np.array([M.pk_lin(ki, self.redshift)*(h0 * h0 * h0) for ki in ks_fid]) 
+                    
+                        M.set({"output": "mPk", "P_k_max_1/Mpc": self.k_max, "z_max_pk": self.redshift, 'non linear': 'Halofit'})
+                        M.compute()
+                        data[i, j, k, 1 + self.k_num : 1 + 2*self.k_num] = np.array([M.pk(ki, 0.0)*(h0 * h0 * h0) for ki in ks_fid]) 
+                        data[i, j, k, 1 + 2*self.k_num :] = np.array([M.pk(ki, self.redshift)*(h0 * h0 * h0) for ki in ks_fid]) 
+            
+                        data[i, j, k, 0] = M.rs_drag() * h0
+                
+                        #print(M.rs_drag() * h0)
+                
                         
                 else:
                     
                     self.logger.info("Generating %d:%d  %0.4f  %0.4f" % (i, j, omch2, h0))
-                    pars.set_cosmology(
-                        H0=h0 * 100,
-                        omch2=omch2,
-                        mnu=self.mnu,
-                        ombh2=self.omega_b * h0 * h0,
-                        omk=0.0,
-                        tau=0.066,
-                        neutrino_hierarchy="degenerate",
-                        num_massive_neutrinos=3,
-                    )
 
-                    pars.NonLinear = camb.model.NonLinear_none
-                    results = camb.get_results(pars)
-                    params = results.get_derived_params()
-                    rdrag = params["rdrag"]* h0
-                    kh, z, pk_lin = results.get_matter_power_spectrum(minkh=self.k_min, maxkh=self.k_max, npoints=self.k_num)
-                    #print(z)
-                    pars.NonLinear = camb.model.NonLinear_pk
-                    results.calc_power_spectra(pars)
-                    kh, z, pk_nonlin = results.get_matter_power_spectrum(minkh=self.k_min, maxkh=self.k_max, npoints=self.k_num)
-                    data[i, j, 0] = rdrag
-                    data[i, j, 1 : 1 + self.k_num] = pk_lin[1, :]
-                    data[i, j, 1 + self.k_num :] = pk_nonlin.flatten()
+                    M.set({
+                        "omega_b": self.omega_b *h0 * h0, 
+                        "omega_cdm": omch2, 
+                        "H0": h0 * 100.0, 
+                        "A_s": 2.083e-9, 
+                        "N_ur": (self.Neff-1.013),  
+                        "N_ncdm": 1.0,  
+                        "m_ncdm": neutrino_mass_input, 
+                        "tau_reio": 0.066, 
+                        "n_s": self.ns
+                        })
+
+                    M.set({"output": "mPk", "P_k_max_1/Mpc": self.k_max, "z_max_pk": self.redshift})
+                    ks_fid = np.logspace(np.log(self.k_min * h0), np.log(self.k_max * h0), self.k_num, base=np.e) # ks in 1/ MPC unit
+                    M.compute()
+                    data[i, j, 1 : 1 + self.k_num] = np.array([M.pk_lin(ki, self.redshift)*(h0 * h0 * h0) for ki in ks_fid]) 
+
+                    M.set({"output": "mPk", "P_k_max_1/Mpc": self.k_max, "z_max_pk": self.redshift, 'non linear': 'Halofit'})
+                    M.compute()
+                    data[i, j, 1 + self.k_num : 1 + 2*self.k_num] = np.array([M.pk(ki, 0.0)*(h0 * h0 * h0) for ki in ks_fid]) 
+                    data[i, j, 1 + 2*self.k_num :] = np.array([M.pk(ki, self.redshift)*(h0 * h0 * h0) for ki in ks_fid]) 
+
+                    data[i, j, 0] = M.rs_drag() * h0
                     
-                    #print(rdrag)
+                    #print(M.rs_drag() * h0, M.rs_drag())
+                    
+                    #print(M.Neff())
 
                     
         if savedata:
@@ -370,7 +370,8 @@ class CambGenerator(object):
             
 
 def test_rand_h0const():
-    g = CambGenerator()
+    g = CLASSGenerator()
+    #g._generate_data()
     g.load_data()
 
     def fn():
@@ -389,14 +390,14 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format="[%(levelname)7s |%(funcName)15s]   %(message)s")
     logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
-    c = getCambGenerator(redshift=0.1, Neff=3.044, h0_resolution=3, om_resolution=5)#, vary_neff=True, neff_resolution=3)
+    # c = getCLASSGenerator(redshift=0.1, Neff=3.044, h0_resolution=1, om_resolution=1, vary_neff=False, neff_resolution=3)
     
-    c._generate_data()
+    # c._generate_data()
 
-#     n = 10000
-#     print("Takes on average, %.1f microseconds" % (timeit.timeit(test_rand_h0const(), number=n) * 1e6 / n))
+    #n = 10000
+    #print("Takes on average, %.1f microseconds" % (timeit.timeit(test_rand_h0const(), number=n) * 1e6 / n))
 
-#     plt.plot(c.ks, c.get_data(0.2, 0.75)["pk_lin"], color="b", linestyle="-", label=r"$\mathrm{Linear}\,\Omega_{m}=0.2\,h_0=0.75$")
+    # plt.plot(c.ks, c.get_data(Neff=3.044)["pk_lin"], color="b", linestyle="-")#, label=r"$\mathrm{Linear}\,\Omega_{m}=0.2\,h_0=0.75$")
 #     plt.plot(c.ks, c.get_data(0.3, 0.75)["pk_lin"], color="r", linestyle="-", label=r"$\mathrm{Linear}\,\Omega_{m}=0.3\,h_0=0.75$")
 #     plt.plot(c.ks, c.get_data(0.2, 0.75)["pk_nl_z"], color="b", linestyle="--", label=r"$\mathrm{Halofit}\,\Omega_{m}=0.2\,h_0=0.75$")
 #     plt.plot(c.ks, c.get_data(0.3, 0.75)["pk_nl_z"], color="r", linestyle="--", label=r"$\mathrm{Halofit}\,\Omega_{m}=0.3\,h_0=0.75$")
@@ -409,26 +410,27 @@ if __name__ == "__main__":
 #     plt.xscale("log")
 #     plt.yscale("log")
 #     plt.legend()
-#     plt.savefig('test.png')
+#     plt.savefig('test_class.png')
 #     plt.show()
     
     
-    # c2 = getCambGenerator(redshift=0.1, Neff=3.044, h0_resolution=1, om_resolution=1, vary_neff=True, neff_resolution=10)
+    # c2 = getCLASSGenerator(redshift=0.1, Neff=3.044, h0_resolution=1, om_resolution=1, vary_neff=True, neff_resolution=10)
     #c2._generate_data()
     
-    #exit() 
+    #n = 10000
+    #print("Takes on average, %.1f microseconds" % (timeit.timeit(test_rand_h0const(), number=n) * 1e6 / n))
     
-#     relpower = 1#c2.get_data(neff=3.0)["pk_lin"]
-#     plt.plot(c2.ks, c2.get_data(Neff=1., h0=0.6, om=0.3)["pk_lin"]/relpower, color="b", linestyle="-", 
-#              label=r"$\mathrm{Linear}\,h_0=0.6\,\Omega_m=0.3\,$Neff=2.")
+#     relpower = c2.get_data(Neff=3.0)["pk_lin"]
+#     plt.plot(c2.ks, c2.get_data(Neff=3., h0=0.6, om=0.3)["pk_lin"]/relpower, color="b", linestyle="-", 
+#              label=r"$\mathrm{Linear}\,h_0=0.6\,\Omega_m=0.3\,$Neff=3.")
 #     plt.plot(c2.ks, c2.get_data(Neff=4.5, h0=0.6, om=0.3)["pk_lin"]/relpower, color="g", linestyle=":", 
-#              label=r"$\mathrm{Linear}\,h_0=0.6\,\Omega_m=0.3\,$Neff=3.5")
-#     plt.plot(c2.ks, c2.get_data(Neff=1., h0=0.7, om=0.3)["pk_lin"]/relpower, color="r", linestyle="-.", 
-#              label=r"$\mathrm{Linear}\,h_0=0.7\,\Omega_m=0.3\,$Neff=2")
+#              label=r"$\mathrm{Linear}\,h_0=0.6\,\Omega_m=0.3\,$Neff=4.5")
+#     plt.plot(c2.ks, c2.get_data(Neff=3., h0=0.7, om=0.3)["pk_lin"]/relpower, color="r", linestyle="-.", 
+#              label=r"$\mathrm{Linear}\,h_0=0.7\,\Omega_m=0.3\,$Neff=3")
 #     plt.plot(c2.ks, c2.get_data(Neff=4.5, h0=0.7, om=0.3)["pk_lin"]/relpower, color="y", linestyle="--", 
-#              label=r"$\mathrm{Linear}\,h_0=0.7\,\Omega_m=0.3\,$Neff=3.5")
+#              label=r"$\mathrm{Linear}\,h_0=0.7\,\Omega_m=0.3\,$Neff=4.5")
     
-#     plt.plot(c2.ks, c2.get_data(Neff=1., h0=0.6, om=0.2)["pk_lin"]/relpower, color="b", linestyle="-", 
+# #     plt.plot(c2.ks, c2.get_data(Neff=1., h0=0.6, om=0.2)["pk_lin"]/relpower, color="b", linestyle="-", 
 #              label=r"$\mathrm{Linear}\,h_0=0.6\,\Omega_m=0.2\,$Neff=2.")
 #     plt.plot(c2.ks, c2.get_data(Neff=4.5, h0=0.6, om=0.2)["pk_lin"]/relpower, color="g", linestyle=":", 
 #              label=r"$\mathrm{Linear}\,h_0=0.6\,\Omega_m=0.2\,$Neff=3.5")
@@ -444,16 +446,16 @@ if __name__ == "__main__":
     # plt.xscale("log")
     # plt.yscale("log")
     # plt.legend()
-    # plt.savefig('test2.png')
-    #plt.show()
+    # plt.savefig('test2_class.png')
+    # plt.show()
     
     
-#     c1 = getCambGenerator(neff=3.045, h0_resolution=3, om_resolution=1)
-#     c1._generate_data()
+    c1 = getCLASSGenerator(Neff=3.045, h0_resolution=3, om_resolution=1)
+    c1._generate_data()
 
-#     plt.plot(c1.ks, c1.get_data()["pk_lin"], color="b", linestyle="-")
-#     plt.xscale("log")
-#     plt.yscale("log")
-#     plt.legend()
-#     plt.savefig('test1.png')
-#     plt.show()
+    plt.plot(c1.ks, c1.get_data()["pk_lin"], color="b", linestyle="-")
+    plt.xscale("log")
+    plt.yscale("log")
+    plt.legend()
+    plt.savefig('test1_class.png')
+    plt.show()

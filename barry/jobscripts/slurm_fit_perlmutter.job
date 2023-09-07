@@ -16,6 +16,7 @@ IDIR={directory}
 
 module load parallel
 
+conda activate barry_env_desiproject_aw
 echo "Activated python"
 export executable=$(which python)
 echo $executable

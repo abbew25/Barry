@@ -30,6 +30,9 @@ class PowerSpectrumFit(Model):
         n_data=1,
         data_share_bias=False,
         data_share_poly=False,
+        vary_phase_shift_neff=False, 
+        vary_neff=False,
+        use_classorcamb='CAMB'
     ):
         """Generic power spectrum function model
 
@@ -40,7 +43,9 @@ class PowerSpectrumFit(Model):
         smooth_type : str, optional
             The sort of smoothing to use. Either 'hinton2017' or 'eh1998'
         fix_params : list[str], optional
-            Parameter names to fix to their defaults. Defaults to just `[om]`.
+            Parameter names to fix to their defaults. Defaults to just `[om]`. With vary_neff = False it defaults to [om, Neff]. With vary_phase_shift_neff = False
+            then the phase shift parameter is also fixed; fix_params = ('om', 'Neff', 'beta_phase_shift'). 
+            Having both of these options (which should be degenerate) allows us to test the effect of varying the cosmology (by varying Neff) or varying the phase shift parameter for Neff instead. We should expect varying either parameter to give the same result, and it probably doesn't make sense to vary both at the same time. 
         postprocess : `Postprocess` object
             The class to postprocess model predictions. Defaults to none.
         smooth : bool, optional
@@ -48,7 +53,16 @@ class PowerSpectrumFit(Model):
         correction : `Correction` enum.
             Defaults to `Correction.SELLENTIN
         """
-        super().__init__(name, postprocess=postprocess, correction=correction, isotropic=isotropic, marg=marg, n_data=n_data)
+        
+        fix_params = [param for param in fix_params]
+        if not vary_neff:
+            fix_params.append("Neff")
+        if not vary_phase_shift_neff:
+            fix_params.append("beta_phase_shift")
+            
+        fix_params = tuple(fix_params) 
+        
+        super().__init__(name, postprocess=postprocess, correction=correction, isotropic=isotropic, marg=marg, n_data=n_data, use_classorcamb=use_classorcamb)
         if smooth_type is None:
             smooth_type = {"method": "hinton2017"}
         self.smooth_type = smooth_type
@@ -79,6 +93,7 @@ class PowerSpectrumFit(Model):
                     raise ValueError("recon not recognised, must be 'iso', 'ani' or 'sym'")
                 self.recon = True
 
+        
         self.declare_parameters()
 
         # Set up data structures for model fitting
@@ -90,6 +105,23 @@ class PowerSpectrumFit(Model):
         self.kvals = None
         self.pksmooth = None
         self.pkratio = None
+        
+    def fitting_func_ps(self, kvals, phi_inf=0.227, kstar=0.0324, epsilon=0.872):
+        """Fitting function for the scale-dependent component of the Baumann et al 2017 
+        parameterization of the BAO phase shift due to the effective number of neutrino species.
+        From the Baumann et al 2017 work best fit values for parameters in this function are:
+        
+        phi_infinity = 0.227
+        k_* = 0.0324 h/Mpc 
+        epsilon = 0.872
+        """
+        return phi_inf/( 1.0 + ((kstar/kvals) ** epsilon) )
+    
+    def phase_shift(self, beta_phase_shift, kvals, phi_inf=0.227, kstar=0.0324, epsilon=0.872):
+        """ The fitting function for the neutrino induced phase shift used in Baumann et al 2017,
+        parameterized as phi(Neff, k) = Beta(Neff) * f(k) where f(k) is a scale-dependent fitting 
+        function and Beta(Neff) is treated as a free parameter in the BAO analysis. """
+        return beta_phase_shift*self.fitting_function_phase_shift(kvals, phi_inf=phi_inf, kstar=kstar, epsilon=epsilon)
 
     def set_marg(self, fix_params, poly_poles, n_poly, do_bias=False):
 
@@ -149,7 +181,10 @@ class PowerSpectrumFit(Model):
         c = data["cosmology"]
         for i in range(self.n_data_bias):
             datapk = splev(kval, splrep(data["ks"], data["pk0"][i]))
-            cambpk = self.camb.get_data(om=c["om"], h0=c["h0"])
+            Neff=3.044
+            if "Neff" in c:
+                Neff=c["Neff"]
+            cambpk = self.camb.get_data(om=c["om"], h0=c["h0"],Neff=Neff)
             modelpk = splev(kval, splrep(cambpk["ks"], cambpk["pk_lin"]))
             kaiserfac = datapk / modelpk
             f = self.get_default("f") if self.param_dict.get("f") is not None else Omega_m_z(c["om"], c["z"]) ** 0.55
@@ -172,12 +207,15 @@ class PowerSpectrumFit(Model):
         for i in range(self.n_data_bias):
             self.add_param(f"b{{{0}}}_{{{i+1}}}", f"$b{{{0}}}_{{{i+1}}}$", 0.1, 10.0, 1.0)  # Galaxy bias
         self.add_param("om", r"$\Omega_m$", 0.1, 0.5, 0.31)  # Cosmology
+        self.add_param("Neff", r"$N_{\mathrm{eff}}$", 0.0, 5.0, 3.044)  # Cosmology 
         self.add_param("alpha", r"$\alpha$", 0.8, 1.2, 1.0)  # Stretch for monopole
+        self.add_param("beta_phase_shift", r"$\beta_{\phi(N_{\mathrm{eff}})}$", -4.0, 6.0, 1.0) # phase shift parameter due to Neff 
         if not self.isotropic:
             self.add_param("epsilon", r"$\epsilon$", -0.2, 0.2, 0.0)  # Stretch for multipoles
+        
 
     @lru_cache(maxsize=1024)
-    def compute_basic_power_spectrum(self, om):
+    def compute_basic_power_spectrum(self, om, Neff=3.044):
         """Computes the smoothed linear power spectrum and the wiggle ratio
 
         Parameters
@@ -194,7 +232,7 @@ class PowerSpectrumFit(Model):
 
         """
         # Get base linear power spectrum from camb
-        res = self.camb.get_data(om=om, h0=self.camb.h0)
+        res = self.camb.get_data(om=om, h0=self.camb.h0, Neff=Neff)
 
         pk_smooth_lin = smooth_func(
             self.camb.ks,
@@ -204,6 +242,7 @@ class PowerSpectrumFit(Model):
             ob=self.camb.omega_b,
             ns=self.camb.ns,
             rs=res["r_s"],
+            Neff=Neff,
             **self.smooth_type,
         )  # Get the smoothed power spectrum
         pk_ratio = res["pk_lin"] / pk_smooth_lin - 1.0  # Get the ratio
@@ -285,7 +324,10 @@ class PowerSpectrumFit(Model):
         # Get the basic power spectrum components
         if self.kvals is None or self.pksmooth is None or self.pkratio is None:
             ks = self.camb.ks
-            pk_smooth_lin, pk_ratio = self.compute_basic_power_spectrum(p["om"])
+            if vary_neff:
+                pk_smooth_lin, pk_ratio = self.compute_basic_power_spectrum(p["om"], p["Neff"])
+            else: 
+                pk_smooth_lin, pk_ratio = self.compute_basic_power_spectrum(p["om"])
         else:
             ks = self.kvals
             pk_smooth_lin, pk_ratio = self.pksmooth, self.pkratio
@@ -494,6 +536,8 @@ class PowerSpectrumFit(Model):
         """
         num_mocks = d["num_mocks"]
         num_data = len(d["pk"])
+        
+        #print(p)
 
         pk_model, pk_model_odd, poly_model, poly_model_odd, mask = self.get_model(p, d, smooth=self.smooth, data_name=d["name"])
 
