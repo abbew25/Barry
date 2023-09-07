@@ -16,6 +16,9 @@ class GridSearch(Sampler):
         if temp_dir is not None and not os.path.exists(temp_dir):
             os.makedirs(temp_dir, exist_ok=True)
 
+    def get_file_suffix(self):
+        return "gridsearch_chain.npy"
+
     def fit(self, model, save_dims=None, uid=None):
         """Just runs a simple grid search and stores the grid points in the chain file.
 
@@ -43,14 +46,14 @@ class GridSearch(Sampler):
         num_dim = model.get_num_dim()
         prior_transform = model.unscale
 
-        filename = os.path.join(self.temp_dir, f"{uid}_gridsearch_chain.npy")
+        filename = self.get_filename(uid)
         if os.path.exists(filename):
-            self.logger.info("Not sampling, returning result from file.")
+            self.logger.info("Not sampling, returning result from GridSearch file.")
             return self.load_file(filename)
         self.logger.info("Sampling posterior now")
 
         self.logger.debug("Fitting framework with %d dimensions" % num_dim)
-        self.logger.info("Using Grid Search")
+        self.logger.info("Using GridSearch")
 
         if save_dims is None:
             save_dims = num_dim

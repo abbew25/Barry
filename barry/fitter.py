@@ -4,6 +4,7 @@ import shutil
 import socket
 import sys
 import numpy as np
+import time
 
 from barry.config import get_config
 from barry.doJob import write_jobscript_slurm
@@ -161,8 +162,11 @@ class Fitter(object):
         self.logger.info("Running fitting job, saving to %s" % self.temp_dir)
         self.logger.info(f"\tModel is {model}")
         self.logger.info(f"\tData is {' '.join([d['name'] for d in self.model_datasets[model_index][1]])}")
+        self.logger.info(f"\tSampler is {sampler}")
+        start = time.time()
         sampler.fit(model, uid=uid, save_dims=self.save_dims)
         self.logger.info("Finished sampling")
+        self.logger.info(f"Time to do fit: {(time.time()-start)/60.0} minutes")
 
     def is_local(self):
         return shutil.which(get_config()["hpc_determining_command"]) is None
@@ -185,6 +189,9 @@ class Fitter(object):
         self.logger.info(f"With {num_models} models+datasets and {self.num_walkers} walkers, " f"have {num_jobs} jobs")
 
         if self.is_local() or self.is_interactive():
+            if len(sys.argv) == 2:
+                if sys.argv[1] != "plot":
+                    index = int(sys.argv[1])
             mi, wi = self._get_indexes_from_index(index)
             self.logger.info("Running model_dataset %d, walker number %d" % (mi, wi))
             self._run_fit(mi, wi)
@@ -263,7 +270,7 @@ class Fitter(object):
                     - dict containing any `extra` information passed in.
         """
         self.logger.info("Loading chains")
-        files = [f for f in os.listdir(self.temp_dir) if f.endswith("chain.npy")]
+        files = [f for f in os.listdir(self.temp_dir) if f.endswith(self.sampler.get_file_suffix())]
         files.sort(key=lambda s: [int(s.split("_")[1]), int(s.split("_")[2])])
         filenames = [self.temp_dir + "/" + f for f in files]
         model_indexes = [int(f.split("_")[1]) for f in files]
