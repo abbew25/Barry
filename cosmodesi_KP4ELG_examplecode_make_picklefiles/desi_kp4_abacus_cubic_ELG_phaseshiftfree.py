@@ -5,13 +5,15 @@ import numpy as np
 
 sys.path.append("../../Barry/")     # Change this so that it points to where you have Barry installed
 
-from barry.samplers import DynestySampler
+#from barry.samplers import DynestySampler
 from barry.config import setup
+from barry.samplers import NautilusSampler
 from barry.models import PowerBeutler2017, CorrBeutler2017 # Beutler et al 2017 methods for calculation power spectrum, correlation function 
 from barry.datasets.dataset_power_spectrum import PowerSpectrum_DESI_KP4 # classes with methods for fitting data? 
 from barry.datasets.dataset_correlation_function import CorrelationFunction_DESI_KP4
 from barry.fitter import Fitter # manages model fitting 
 from barry.models.model import Correction # class for applying corrections to the likelihood function 
+
 
 if __name__ == "__main__":
     
@@ -21,7 +23,8 @@ if __name__ == "__main__":
     # Set up the Fitting class and Dynesty sampler with 500 live points. 
     # Set remove_output=False to make sure that we don't delete/overwrite existing chains in the same directory.
     fitter = Fitter(dir_name, remove_output=True)
-    sampler = DynestySampler(temp_dir=dir_name, nlive=500)
+    #sampler = DynestySampler(temp_dir=dir_name, nlive=500)
+    sampler = NautilusSampler(temp_dir=dir_name, nlive=500)
     
     # The optimal sigma values we found when fitting the mocks with fixed alpha/epsilon
     sigma_nl_par = {None: 8.35, "sym": 5.22}
