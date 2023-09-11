@@ -152,15 +152,19 @@ if __name__ == "__main__":
                 allnames.append(name)
 
     #print(allnames)
+    fitter.set_sampler(sampler)
+    fitter.set_num_walkers(1)
+    
+    print(dir(fitter.sampler))
+    
+    #exit()
     outfile = fitter.temp_dir+pfn.split("/")[-1]+".fitter.pkl"
     with open(outfile, 'wb') as pickle_file:
         pickle.dump(fitter, pickle_file)
                 
     # Set the sampler (dynesty) and assign 1 walker (processor) to each. If we assign more than one walker, for dynesty
     # this means running independent chains which will then get added together when they are loaded in.
-    fitter.set_sampler(sampler)
-    fitter.set_num_walkers(1)
-    fitter.fit(file)
+    # fitter.fit(file)
     
     # If this is being run for the first time (i.e., not via a submission script), dump the entire fitter class to a file
     # so we can use it to read in the chains/models/datasets for plotting in a jupyter notebook

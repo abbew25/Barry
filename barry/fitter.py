@@ -8,7 +8,7 @@ import time
 
 from barry.config import get_config
 from barry.doJob import write_jobscript_slurm
-from barry.samplers import DynestySampler, GridSearch
+from barry.samplers import DynestySampler, GridSearch, NautilusSampler
 from barry.utils import get_hpc
 
 

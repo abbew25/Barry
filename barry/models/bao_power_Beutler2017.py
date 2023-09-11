@@ -117,6 +117,8 @@ class PowerBeutler2017(PowerSpectrumFit):
         else:
             ks = self.kvals
             pk_smooth_lin, pk_ratio = self.pksmooth, self.pkratio
+            
+        #print(pk_smooth_lin, pk_ratio)
 
         # We split for isotropic and anisotropic here for consistency with our previous isotropic convention, which
         # differs from our implementation of the Beutler2017 isotropic model quite a bit. This results in some duplication
@@ -126,6 +128,8 @@ class PowerBeutler2017(PowerSpectrumFit):
         if not for_corr:
             if "b{0}" not in p:
                 p = self.deal_with_ndata(p, 0)
+                
+        #print(p)
 
         if self.isotropic:
             pk = [np.zeros(len(k))]

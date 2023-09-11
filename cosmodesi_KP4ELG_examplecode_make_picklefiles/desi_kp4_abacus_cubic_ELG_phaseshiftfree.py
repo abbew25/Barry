@@ -81,6 +81,7 @@ if __name__ == "__main__":
                 vary_phase_shift_neff=True, 
                 use_classorcamb='CLASS',
             )
+            
             #print(model.get_active_params())
             #exit()
             
@@ -111,6 +112,9 @@ if __name__ == "__main__":
             model.set_default("sigma_nl_perp", sigma_nl_perp[recon], min=0.0, max=20.0, sigma=4.0, prior="gaussian")
             model.set_default("sigma_s", sigma_s[recon], min=0.0, max=20.0, sigma=4.0, prior="gaussian")
 
+            params_dict = {j.name: j.default for j in model.params}
+            print(params_dict)
+            continue 
             # Load in the proper DESI BAO template rather than Barry computing its own.
             # pktemplate = np.loadtxt("../prepare_data/DESI_Pk_template.dat")
             pktemplate = np.loadtxt("DESI_Pk_template.dat")
@@ -167,17 +171,17 @@ if __name__ == "__main__":
             # ------------------------------------------------------------------------------------------------------
 
     #print(allnames)
-                
+    exit()            
     # Set the sampler (dynesty) and assign 1 walker (processor) to each. If we assign more than one walker, for dynesty
     # this means running independent chains which will then get added together when they are loaded in.
+    fitter.set_sampler(sampler)
+    fitter.set_num_walkers(1)
+    
     outfile = fitter.temp_dir+pfn.split("/")[-1]+".fitter.pkl"
     with open(outfile, 'wb') as pickle_file:
         pickle.dump(fitter, pickle_file)
     
     #exit()
-    
-    fitter.set_sampler(sampler)
-    fitter.set_num_walkers(1)
     fitter.fit(file)
     
     # If this is being run for the first time (i.e., not via a submission script), dump the entire fitter class to a file
