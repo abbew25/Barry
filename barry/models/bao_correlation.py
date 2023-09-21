@@ -27,6 +27,9 @@ class CorrelationFunctionFit(Model):
         marg=None,
         includeb2=True,
         n_poly=3,
+        vary_neff=False,
+        vary_phase_shift_neff=False,
+        use_classorcamb='CAMB'
     ):
 
         """Generic correlation function model
@@ -53,6 +56,9 @@ class CorrelationFunctionFit(Model):
             isotropic=isotropic,
             marg=marg,
             n_poly=n_poly,
+            vary_neff=False,
+            vary_phase_shift_neff=False,
+            use_classorcamb='CAMB'
         )
         if smooth_type is None:
             self.smooth_type = {"method": "hinton2017"}
@@ -108,6 +114,23 @@ class CorrelationFunctionFit(Model):
                 for pole in self.poly_poles:
                     for ip in range(n_poly):
                         self.set_default(f"a{{{pole}}}_{{{ip+1}}}_{{{i+1}}}", 0.0)
+                        
+    def fitting_func_ps(self, kvals, phi_inf=0.227, kstar=0.0324, epsilon=0.872):
+        """Fitting function for the scale-dependent component of the Baumann et al 2017 
+        parameterization of the BAO phase shift due to the effective number of neutrino species.
+        From the Baumann et al 2017 work best fit values for parameters in this function are:
+        
+        phi_infinity = 0.227
+        k_* = 0.0324 h/Mpc 
+        epsilon = 0.872
+        """
+        return phi_inf/( 1.0 + ((kstar/kvals) ** epsilon) )
+    
+    def phase_shift(self, beta_phase_shift, kvals, phi_inf=0.227, kstar=0.0324, epsilon=0.872):
+        """ The fitting function for the neutrino induced phase shift used in Baumann et al 2017,
+        parameterized as phi(Neff, k) = Beta(Neff) * f(k) where f(k) is a scale-dependent fitting 
+        function and Beta(Neff) is treated as a free parameter in the BAO analysis. """
+        return beta_phase_shift*self.fitting_function_phase_shift(kvals, phi_inf=phi_inf, kstar=kstar, epsilon=epsilon)
 
     def set_data(self, data):
         """Sets the models data, including fetching the right cosmology and PT generator.
@@ -127,7 +150,11 @@ class CorrelationFunctionFit(Model):
         # self.pk2xi_0 = PowerToCorrelationFFTLog(ell=0, r0=50.0)
         # self.pk2xi_2 = PowerToCorrelationFFTLog(ell=2, r0=50.0)
         # self.pk2xi_4 = PowerToCorrelationFFTLog(ell=4, r0=50.0)
-        cambpk = self.camb.get_data(om=data[0]["cosmology"]["om"], h0=data[0]["cosmology"]["h0"])
+        if "Neff" in data[0]["cosmology"]: 
+            cambpk = self.camb.get_data(om=data[0]["cosmology"]["om"], h0=data[0]["cosmology"]["h0"], 
+                                       Neff=data[0]["cosmology"]["Neff"])
+        else: 
+            cambpk = self.camb.get_data(om=data[0]["cosmology"]["om"], h0=data[0]["cosmology"]["h0"])
         self.pk2xi_0 = PowerToCorrelationSphericalBessel(qs=cambpk["ks"], ell=0)
         self.pk2xi_2 = PowerToCorrelationSphericalBessel(qs=cambpk["ks"], ell=2)
         self.pk2xi_4 = PowerToCorrelationSphericalBessel(qs=cambpk["ks"], ell=4)
@@ -148,7 +175,10 @@ class CorrelationFunctionFit(Model):
 
         c = data["cosmology"]
         dataxi = splev(sval, splrep(data["dist"], data["xi0"]))
-        cambpk = self.camb.get_data(om=c["om"], h0=c["h0"])
+        Neff=3.044
+        if "Neff" in c:
+            Neff=c["Neff"]
+        cambpk = self.camb.get_data(om=c["om"], h0=c["h0"], Neff = Neff)
         modelxi = self.pk2xi_0.__call__(cambpk["ks"], cambpk["pk_lin"], np.array([sval]))[0]
         kaiserfac = dataxi / modelxi
         f = self.param_dict.get("f") if self.param_dict.get("f") is not None else Omega_m_z(c["om"], c["z"]) ** 0.55
@@ -173,7 +203,9 @@ class CorrelationFunctionFit(Model):
     def declare_parameters(self):
         """Defines model parameters, their bounds and default value."""
         self.add_param("om", r"$\Omega_m$", 0.1, 0.5, 0.31)  # Cosmology
+        self.add_param("Neff", r"$N_{\mathrm{eff}}$", 0.0, 5.0, 3.044)  # Cosmology 
         self.add_param("alpha", r"$\alpha$", 0.8, 1.2, 1.0)  # Stretch for monopole
+        self.add_param("beta_phase_shift", r"$\beta_{\phi(N_{\mathrm{eff}})}$", -4.0, 6.0, 1.0) # phase shift parameter due to Neff 
         if not self.isotropic:
             self.add_param("epsilon", r"$\epsilon$", -0.2, 0.2, 0.0)  # Stretch for multipoles
 
@@ -228,7 +260,7 @@ class CorrelationFunctionFit(Model):
             xi4 = 35.0 * simps(xi2d * mu**4, self.mu, axis=1)
         return xi0, xi2, xi4
 
-    def compute_basic_correlation_function(self, dist, p, smooth=False):
+    def compute_basic_correlation_function(self, dist, p, smooth=False, vary_neff=False):
         """Computes the basic correlation function computes usig the parent Power spectrum class
 
         Parameters
@@ -251,12 +283,12 @@ class CorrelationFunctionFit(Model):
         if self.fixed_xi:
             if smooth:
                 if self.store_xi_smooth[0] is None:
-                    ks, pks, _ = self.parent.compute_power_spectrum(self.parent.camb.ks, p, smooth=smooth, for_corr=True)
+                    ks, pks, _ = self.parent.compute_power_spectrum(self.parent.camb.ks, p, smooth=smooth, for_corr=True, vary_neff=vary_neff)
             else:
                 if self.store_xi[0] is None:
-                    ks, pks, _ = self.parent.compute_power_spectrum(self.parent.camb.ks, p, smooth=smooth, for_corr=True)
+                    ks, pks, _ = self.parent.compute_power_spectrum(self.parent.camb.ks, p, smooth=smooth, for_corr=True, vary_neff=vary_neff)
         else:
-            ks, pks, _ = self.parent.compute_power_spectrum(self.parent.camb.ks, p, smooth=smooth, for_corr=True)
+            ks, pks, _ = self.parent.compute_power_spectrum(self.parent.camb.ks, p, smooth=smooth, for_corr=True, vary_neff=vary_neff)
 
         xi = [np.zeros(len(dist)), np.zeros(len(dist)), np.zeros(len(dist))]
 
@@ -320,7 +352,7 @@ class CorrelationFunctionFit(Model):
 
         return sprime, xi
 
-    def compute_correlation_function(self, dist, p, smooth=False):
+    def compute_correlation_function(self, dist, p, smooth=False, vary_neff = False):
         """Computes the correlation function model using the Beutler et. al., 2017 power spectrum
             and 3 bias parameters but no polynomial terms
 
@@ -343,7 +375,7 @@ class CorrelationFunctionFit(Model):
             the additive terms in the model, necessary for analytical marginalisation
 
         """
-        sprime, xi_comp = self.compute_basic_correlation_function(dist, p, smooth=smooth)
+        sprime, xi_comp = self.compute_basic_correlation_function(dist, p, smooth=smooth, vary_neff = vary_neff)
         xi, poly = self.add_poly(dist, p, xi_comp)
 
         return sprime, xi, poly

@@ -298,7 +298,7 @@ class PowerSpectrumFit(Model):
             pk2 = 2.5 * (pk2 - pk0)
         return pk0, pk2, pk4
 
-    def compute_power_spectrum(self, k, p, smooth=False, for_corr=False, data_name=None):
+    def compute_power_spectrum(self, k, p, smooth=False, for_corr=False, data_name=None, vary_neff=False):
         """Get raw ks and p(k) multipoles for a given parametrisation dilated based on the values of alpha and epsilon
 
         Parameters
@@ -324,7 +324,7 @@ class PowerSpectrumFit(Model):
         # Get the basic power spectrum components
         if self.kvals is None or self.pksmooth is None or self.pkratio is None:
             ks = self.camb.ks
-            if vary_neff:
+            if vary_Neff:  
                 pk_smooth_lin, pk_ratio = self.compute_basic_power_spectrum(p["om"], p["Neff"])
             else: 
                 pk_smooth_lin, pk_ratio = self.compute_basic_power_spectrum(p["om"])
@@ -340,7 +340,13 @@ class PowerSpectrumFit(Model):
         if self.isotropic:
             pk = [np.zeros(len(k))]
             kprime = k if for_corr else k / p["alpha"]
+            
+            if self.param_dict["beta_phase_shift"].active:
+                rdrag_fid = self.camb.get_data(om=p["om"],Neff=p["Neff"])['r_s']
+                kprime_phaseshift = kprime + (p['beta_phase_shift'] - 1.0)*self.fitting_func_ps(k)/rdrag_fid
+                
             pk_smooth = splev(kprime, splrep(ks, pk_smooth_lin))
+            
             if not for_corr:
                 pk_smooth *= p["b{0}"]
 
@@ -349,8 +355,12 @@ class PowerSpectrumFit(Model):
             else:
                 # Compute the propagator
                 C = np.ones(len(ks))
-                propagator = splev(kprime, splrep(ks, (1.0 + pk_ratio * C)))
-                pk[0] = pk_smooth * propagator
+                if self.param_dict["beta_phase_shift"].active:
+                    propagator = splev(kprime_phaseshift, splrep(ks, (1.0 + pk_ratio * C)))
+                    pk[0] = pk_smooth * propagator
+                else: 
+                    propagator = splev(kprime, splrep(ks, (1.0 + pk_ratio * C)))
+                    pk[0] = pk_smooth * propagator
 
             poly = np.zeros((1, len(k)))
             if self.marg:
@@ -361,6 +371,13 @@ class PowerSpectrumFit(Model):
 
             epsilon = 0 if for_corr else p["epsilon"]
             kprime = np.tile(k, (self.nmu, 1)).T if for_corr else np.outer(k / p["alpha"], self.get_kprimefac(epsilon))
+            
+            # additional term for varying the phase shift added to kprime goes to zero when beta_face_shift = 1.0 (standard value of Neff=3.044) 
+            if self.param_dict["beta_phase_shift"].active:
+                rdrag_fid = self.camb.get_data(om=p["om"],Neff=p["Neff"])['r_s']
+                karr = np.tile(k, (self.nmu, 1)).T
+                kprime_phaseshift = kprime + (p['beta_phase_shift'] - 1.0)*self.fitting_func_ps(karr)/rdrag_fid
+                
             muprime = self.mu if for_corr else self.get_muprime(epsilon)
             if self.recon_type.lower() == "iso":
                 kaiser_prefac = 1.0 + p["beta"] * muprime**2 * (1.0 - splev(kprime, splrep(self.camb.ks, self.camb.smoothing_kernel)))
@@ -375,7 +392,10 @@ class PowerSpectrumFit(Model):
                 pk2d = pk_smooth
             else:
                 C = np.ones(len(ks))
-                pk2d = pk_smooth * (1.0 + splev(kprime, splrep(ks, pk_ratio)) * C)
+                if self.param_dict['beta_phase_shift'].active:
+                    pk2d = pk_smooth * (1.0 + splev(kprime_phaseshift, splrep(ks, pk_ratio)) * C)
+                else:
+                    pk2d = pk_smooth * (1.0 + splev(kprime, splrep(ks, pk_ratio)) * C)
 
             pk0, pk2, pk4 = self.integrate_mu(pk2d)
 

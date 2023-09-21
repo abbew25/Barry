@@ -25,6 +25,9 @@ class CorrBeutler2017(CorrelationFunctionFit):
         marg=None,
         dilate_smooth=True,
         n_poly=3,
+        vary_neff=False,
+        vary_phase_shift_neff=False,
+        use_classorcamb='CAMB'
     ):
 
         self.dilate_smooth = dilate_smooth
@@ -41,6 +44,9 @@ class CorrBeutler2017(CorrelationFunctionFit):
             marg=marg,
             includeb2=False,
             n_poly=n_poly,
+            vary_neff=False,
+            vary_phase_shift_neff=False,
+            use_classorcamb='CAMB'
         )
         self.parent = PowerBeutler2017(
             fix_params=fix_params,
@@ -52,6 +58,9 @@ class CorrBeutler2017(CorrelationFunctionFit):
             marg=marg,
             dilate_smooth=dilate_smooth,
             n_poly=n_poly,
+            vary_neff=False,
+            vary_phase_shift_neff=False,
+            use_classorcamb='CAMB'
         )
 
         self.set_marg(fix_params, poly_poles, n_poly, do_bias=False)
@@ -70,7 +79,7 @@ class CorrBeutler2017(CorrelationFunctionFit):
             for ip in range(self.n_poly):
                 self.add_param(f"a{{{pole}}}_{{{ip+1}}}_{{{1}}}", f"$a_{{{pole},{ip+1},1}}$", -100.0, 100.0, 0)
 
-    def compute_correlation_function(self, dist, p, smooth=False):
+    def compute_correlation_function(self, dist, p, smooth=False, vary_neff=False):
         """Computes the correlation function model using the Beutler et. al., 2017 power spectrum
             and 3 bias parameters and polynomial terms per multipole
 
@@ -94,7 +103,7 @@ class CorrBeutler2017(CorrelationFunctionFit):
 
         """
 
-        ks, pks, _ = self.parent.compute_power_spectrum(self.parent.camb.ks, p, smooth=smooth, nopoly=True)
+        ks, pks, _ = self.parent.compute_power_spectrum(self.parent.camb.ks, p, smooth=smooth, nopoly=True, vary_neff=False)
         xi_comp = np.array([self.pk2xi_0.__call__(ks, pks[0], dist), np.zeros(len(dist)), np.zeros(len(dist))])
 
         if not self.isotropic:
