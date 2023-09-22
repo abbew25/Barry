@@ -44,9 +44,9 @@ class CorrBeutler2017(CorrelationFunctionFit):
             marg=marg,
             includeb2=False,
             n_poly=n_poly,
-            vary_neff=False,
-            vary_phase_shift_neff=False,
-            use_classorcamb='CAMB'
+            vary_neff=vary_neff,
+            vary_phase_shift_neff=vary_phase_shift_neff,
+            use_classorcamb=use_classorcamb
         )
         self.parent = PowerBeutler2017(
             fix_params=fix_params,
@@ -58,9 +58,9 @@ class CorrBeutler2017(CorrelationFunctionFit):
             marg=marg,
             dilate_smooth=dilate_smooth,
             n_poly=n_poly,
-            vary_neff=False,
-            vary_phase_shift_neff=False,
-            use_classorcamb='CAMB'
+            vary_neff=vary_neff,
+            vary_phase_shift_neff=vary_phase_shift_neff,
+            use_classorcamb=use_classorcamb
         )
 
         self.set_marg(fix_params, poly_poles, n_poly, do_bias=False)

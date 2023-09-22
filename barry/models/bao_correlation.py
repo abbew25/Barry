@@ -56,9 +56,9 @@ class CorrelationFunctionFit(Model):
             isotropic=isotropic,
             marg=marg,
             n_poly=n_poly,
-            vary_neff=False,
-            vary_phase_shift_neff=False,
-            use_classorcamb='CAMB'
+            vary_neff=vary_neff,
+            vary_phase_shift_neff=vary_phase_shift_neff,
+            use_classorcamb=use_classorcamb
         )
         if smooth_type is None:
             self.smooth_type = {"method": "hinton2017"}
