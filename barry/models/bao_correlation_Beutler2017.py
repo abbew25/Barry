@@ -103,7 +103,7 @@ class CorrBeutler2017(CorrelationFunctionFit):
 
         """
 
-        ks, pks, _ = self.parent.compute_power_spectrum(self.parent.camb.ks, p, smooth=smooth, nopoly=True, vary_neff=False)
+        ks, pks, _ = self.parent.compute_power_spectrum(self.parent.camb.ks, p, smooth=smooth, nopoly=True, vary_neff=vary_neff)
         xi_comp = np.array([self.pk2xi_0.__call__(ks, pks[0], dist), np.zeros(len(dist)), np.zeros(len(dist))])
 
         if not self.isotropic:
