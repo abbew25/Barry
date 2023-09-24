@@ -62,6 +62,14 @@ class CorrBeutler2017(CorrelationFunctionFit):
             vary_phase_shift_neff=vary_phase_shift_neff,
             use_classorcamb=use_classorcamb
         )
+        
+        fix_params = [param for param in fix_params]
+        if not vary_neff:
+            fix_params.append("Neff")
+        if not vary_phase_shift_neff:
+            fix_params.append("beta_phase_shift")
+            
+        fix_params = tuple(fix_params) 
 
         self.set_marg(fix_params, poly_poles, n_poly, do_bias=False)
 

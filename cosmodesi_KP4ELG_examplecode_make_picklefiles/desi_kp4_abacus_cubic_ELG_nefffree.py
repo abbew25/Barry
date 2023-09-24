@@ -5,7 +5,7 @@ import numpy as np
 
 sys.path.append("../../Barry/")     # Change this so that it points to where you have Barry installed
 
-from barry.samplers import DynestySampler
+from barry.samplers import NautilusSampler#DynestySampler
 from barry.config import setup
 from barry.models import PowerBeutler2017, CorrBeutler2017 # Beutler et al 2017 methods for calculation power spectrum, correlation function 
 from barry.datasets.dataset_power_spectrum import PowerSpectrum_DESI_KP4 # classes with methods for fitting data? 
@@ -20,8 +20,10 @@ if __name__ == "__main__":
     #print(sys.path)
     # Set up the Fitting class and Dynesty sampler with 500 live points. 
     # Set remove_output=False to make sure that we don't delete/overwrite existing chains in the same directory.
-    fitter = Fitter(dir_name, remove_output=False)
-    sampler = DynestySampler(temp_dir=dir_name, nlive=500)
+    fitter = Fitter(dir_name, remove_output=True)
+    #sampler = DynestySampler(temp_dir=dir_name, nlive=500)
+    sampler = NautilusSampler(temp_dir=dir_name, nlive=500)
+    
     
     # The optimal sigma values we found when fitting the mocks with fixed alpha/epsilon
     sigma_nl_par = {None: 8.7, "sym": 5.4}
@@ -52,18 +54,18 @@ if __name__ == "__main__":
             )
 
             # ------------------------------------------------------------------------------------------------------
-            # dataset_xi = CorrelationFunction_DESI_KP4(
-            #     recon=recon,
-            #     fit_poles=[0, 2],
-            #     min_dist=52.0,
-            #     max_dist=150.0,
-            #     realisation=None,
-            #     num_mocks=1000,
-            #     reduce_cov_factor=1,
-            #     datafile=mockname+"_xi_elg.pkl",
-            #     #data_location="../prepare_data/",
-            #     data_location="/global/u1/a/abbew25/barryrepo/Barry/cosmodesi_KP4ELG_examplecode_make_picklefiles",
-            # )
+            dataset_xi = CorrelationFunction_DESI_KP4(
+                recon=recon,
+                fit_poles=[0, 2],
+                min_dist=52.0,
+                max_dist=150.0,
+                realisation=None,
+                num_mocks=1000,
+                reduce_cov_factor=25,
+                datafile=mockname+"_xi_elg.pkl",
+                #data_location="../prepare_data/",
+                data_location="/global/u1/a/abbew25/barryrepo/Barry/cosmodesi_KP4ELG_examplecode_make_picklefiles",
+            )
             # ------------------------------------------------------------------------------------------------------
 
             # Set up the appropriate model for the power spectrum
@@ -103,9 +105,9 @@ if __name__ == "__main__":
 #             exit()
             # Set Gaussian priors for the BAO damping centred on the optimal values 
             # found from fitting with fixed alpha/epsilon and with width 2 Mpc/h
-            model.set_default("sigma_nl_par", sigma_nl_par[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
-            model.set_default("sigma_nl_perp", sigma_nl_perp[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
-            model.set_default("sigma_s", sigma_s[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
+            model.set_default("sigma_nl_par", sigma_nl_par[recon], min=0.0, max=20.0, sigma=4.0, prior="gaussian")
+            model.set_default("sigma_nl_perp", sigma_nl_perp[recon], min=0.0, max=20.0, sigma=4.0, prior="gaussian")
+            model.set_default("sigma_s", sigma_s[recon], min=0.0, max=20.0, sigma=4.0, prior="gaussian")
 
             # Load in the proper DESI BAO template rather than Barry computing its own.
             # pktemplate = np.loadtxt("../prepare_data/DESI_Pk_template.dat")
@@ -130,55 +132,57 @@ if __name__ == "__main__":
 
                 
             # correlation function ----------------------------------------------------------------------------------
-#             model = CorrBeutler2017(
-#                 recon=dataset_xi.recon,
-#                 isotropic=dataset_xi.isotropic,
-#                 marg="full",
-#                 poly_poles=dataset_xi.fit_poles,
-#                 correction=Correction.NONE,
-#                 n_poly=4,    # 4 polynomial terms for Xi(s)
-#                 fix_params=[]
-#             )
+            model = CorrBeutler2017(
+                recon=dataset_xi.recon,
+                isotropic=dataset_xi.isotropic,
+                marg="full",
+                poly_poles=dataset_xi.fit_poles,
+                correction=Correction.NONE,
+                n_poly=4,    # 4 polynomial terms for Xi(s)
+                vary_neff=True
+                #fix_params=[]
+            )
 
-#             # Set Gaussian priors for the BAO damping centred on the optimal values 
-#             # found from fitting with fixed alpha/epsilon and with width 2 Mpc/h
-#             model.set_default("sigma_nl_par", sigma_nl_par[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
-#             model.set_default("sigma_nl_perp", sigma_nl_perp[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
-#             model.set_default("sigma_s", sigma_s[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
+            # Set Gaussian priors for the BAO damping centred on the optimal values 
+            # found from fitting with fixed alpha/epsilon and with width 2 Mpc/h
+            model.set_default("sigma_nl_par", sigma_nl_par[recon], min=0.0, max=20.0, sigma=4.0, prior="gaussian")
+            model.set_default("sigma_nl_perp", sigma_nl_perp[recon], min=0.0, max=20.0, sigma=4.0, prior="gaussian")
+            model.set_default("sigma_s", sigma_s[recon], min=0.0, max=20.0, sigma=4.0, prior="gaussian")
 
-#             #pktemplate = np.loadtxt("../prepare_data/DESI_Pk_template.dat")
-#             pktemplate = np.loadtxt("DESI_Pk_template.dat")
-#             model.parent.kvals, model.parent.pksmooth, model.parent.pkratio = pktemplate.T
+            #pktemplate = np.loadtxt("../prepare_data/DESI_Pk_template.dat")
+            pktemplate = np.loadtxt("DESI_Pk_template.dat")
+            model.parent.kvals, model.parent.pksmooth, model.parent.pkratio = pktemplate.T
 
-#             name = dataset_xi.name + " mock mean"
-#             fitter.add_model_and_dataset(model, dataset_xi, name=name)
-#             allnames.append(name)
+            name = dataset_xi.name + " mock mean"
+            fitter.add_model_and_dataset(model, dataset_xi, name=name)
+            allnames.append(name)
 
-#             # Now add the individual realisations to the list
-#             for j in range(len(dataset_xi.mock_data)):
-#                 dataset_xi.set_realisation(j)
-#                 name = dataset_xi.name + f" realisation {j}"
-#                 fitter.add_model_and_dataset(model, dataset_xi, name=name)
-#                 allnames.append(name)
+            # Now add the individual realisations to the list
+            for j in range(len(dataset_xi.mock_data)):
+                dataset_xi.set_realisation(j)
+                name = dataset_xi.name + f" realisation {j}"
+                fitter.add_model_and_dataset(model, dataset_xi, name=name)
+                allnames.append(name)
             # ------------------------------------------------------------------------------------------------------
 
     #print(allnames)
                 
     # Set the sampler (dynesty) and assign 1 walker (processor) to each. If we assign more than one walker, for dynesty
     # this means running independent chains which will then get added together when they are loaded in.
+    
+    fitter.set_sampler(sampler)
+    fitter.set_num_walkers(1)
+    
     outfile = fitter.temp_dir+pfn.split("/")[-1]+".fitter.pkl"
     with open(outfile, 'wb') as pickle_file:
         pickle.dump(fitter, pickle_file)
     
-    exit()
-    
-    fitter.set_sampler(sampler)
-    fitter.set_num_walkers(1)
+    #exit()
     fitter.fit(file)
     
     # If this is being run for the first time (i.e., not via a submission script), dump the entire fitter class to a file
     # so we can use it to read in the chains/models/datasets for plotting in a jupyter notebook
-    if len(sys.argv) == 1:
-        outfile = fitter.temp_dir+pfn.split("/")[-1]+".fitter.pkl"
-        with open(outfile, 'wb') as pickle_file:
-            pickle.dump(fitter, pickle_file)
+    # if len(sys.argv) == 1:
+    #     outfile = fitter.temp_dir+pfn.split("/")[-1]+".fitter.pkl"
+    #     with open(outfile, 'wb') as pickle_file:
+    #         pickle.dump(fitter, pickle_file)
