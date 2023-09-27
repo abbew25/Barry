@@ -27,9 +27,13 @@ if __name__ == "__main__":
     sampler = NautilusSampler(temp_dir=dir_name, nlive=500)
     
     # The optimal sigma values we found when fitting the mocks with fixed alpha/epsilon
-    sigma_nl_par = {None: 8.35, "sym": 5.22}
-    sigma_nl_perp = {None: 4.35, "sym": 1.6}
-    sigma_s = {None: 7.05, "sym": 5.90}
+#     sigma_nl_par = {None: 8.35, "sym": 5.22}
+#     sigma_nl_perp = {None: 4.35, "sym": 1.6}
+#     sigma_s = {None: 7.05, "sym": 5.90}
+    
+    sigma_nl_par = {None: 8.7, "sym": 5.4}
+    sigma_nl_perp = {None: 4.0, "sym": 1.5}
+    sigma_s = {None: 3.5, "sym": 0.0}
     
     # Loop over the mocktypes
     allnames = []
@@ -144,7 +148,7 @@ if __name__ == "__main__":
                 marg="full",
                 poly_poles=dataset_xi.fit_poles,
                 correction=Correction.NONE,
-                n_poly=4,    # 4 polynomial terms for Xi(s)
+                n_poly=3,    # 4 polynomial terms for Xi(s)
                 vary_phase_shift_neff=True,
             )
 

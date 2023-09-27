@@ -103,9 +103,9 @@ if __name__ == "__main__":
 #             exit()
             # Set Gaussian priors for the BAO damping centred on the optimal values 
             # found from fitting with fixed alpha/epsilon and with width 2 Mpc/h
-            model.set_default("sigma_nl_par", sigma_nl_par[recon], min=0.0, max=20.0, sigma=4.0, prior="gaussian")
-            model.set_default("sigma_nl_perp", sigma_nl_perp[recon], min=0.0, max=20.0, sigma=4.0, prior="gaussian")
-            model.set_default("sigma_s", sigma_s[recon], min=0.0, max=20.0, sigma=4.0, prior="gaussian")
+            model.set_default("sigma_nl_par", sigma_nl_par[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
+            model.set_default("sigma_nl_perp", sigma_nl_perp[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
+            model.set_default("sigma_s", sigma_s[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
 
             # Load in the proper DESI BAO template rather than Barry computing its own.
             # pktemplate = np.loadtxt("../prepare_data/DESI_Pk_template.dat")
@@ -133,15 +133,15 @@ if __name__ == "__main__":
                 marg="full",
                 poly_poles=dataset_xi.fit_poles,
                 correction=Correction.NONE,
-                n_poly=4,    # 4 polynomial terms for Xi(s)
+                n_poly=3,    # 3 polynomial terms for Xi(s)
                 fix_params=[]
             )
 
             # Set Gaussian priors for the BAO damping centred on the optimal values 
             # found from fitting with fixed alpha/epsilon and with width 2 Mpc/h
-            model.set_default("sigma_nl_par", sigma_nl_par[recon], min=0.0, max=20.0, sigma=4.0, prior="gaussian")
-            model.set_default("sigma_nl_perp", sigma_nl_perp[recon], min=0.0, max=20.0, sigma=4.0, prior="gaussian")
-            model.set_default("sigma_s", sigma_s[recon], min=0.0, max=20.0, sigma=4.0, prior="gaussian")
+            model.set_default("sigma_nl_par", sigma_nl_par[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
+            model.set_default("sigma_nl_perp", sigma_nl_perp[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
+            model.set_default("sigma_s", sigma_s[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
 
             #pktemplate = np.loadtxt("../prepare_data/DESI_Pk_template.dat")
             pktemplate = np.loadtxt("DESI_Pk_template.dat")
