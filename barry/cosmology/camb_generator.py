@@ -194,7 +194,7 @@ class CambGenerator(object):
                             omk=0.0,
                             tau=0.066,
                             neutrino_hierarchy="degenerate",
-                            num_massive_neutrinos=3,
+                            num_massive_neutrinos=1,
                             nnu=neff, 
                         )
                         
@@ -223,7 +223,7 @@ class CambGenerator(object):
                         omk=0.0,
                         tau=0.066,
                         neutrino_hierarchy="degenerate",
-                        num_massive_neutrinos=3,
+                        num_massive_neutrinos=1,
                     )
 
                     pars.NonLinear = camb.model.NonLinear_none
