@@ -109,7 +109,7 @@ class CambGenerator(object):
         if neff_resolution == 1:
             self.neffs = [Neff]
         else:
-            self.neffs = np.linspace(0., 5., self.neff_resolution)
+            self.neffs = np.linspace(1.0, 7.0, self.neff_resolution)
 
         self.data = None
         if not vary_neff:

@@ -108,7 +108,7 @@ class CLASSGenerator(object):
         if neff_resolution == 1:
             self.neffs = [Neff]
         else:
-            self.neffs = np.linspace(1.013, 6.013, self.neff_resolution)
+            self.neffs = np.linspace(1.0, 7.0, self.neff_resolution)
 
         self.data = None
         if not vary_neff:
@@ -187,7 +187,7 @@ class CLASSGenerator(object):
                         "omega_cdm": omch2, 
                         "H0": h0 * 100.0, 
                         "A_s": 2.083e-9, 
-                        "N_ur": (neff-1.013),  
+                        "N_ur": (neff-1.013155), 
                         "N_ncdm": 1.0,  
                         "m_ncdm": neutrino_mass_input, 
                         "tau_reio": 0.066, 
@@ -218,7 +218,7 @@ class CLASSGenerator(object):
                         "omega_cdm": omch2, 
                         "H0": h0 * 100.0, 
                         "A_s": 2.083e-9, 
-                        "N_ur": (self.Neff-1.013),  
+                        "N_ur": (self.Neff-1.013155),  
                         "N_ncdm": 1.0,  
                         "m_ncdm": neutrino_mass_input, 
                         "tau_reio": 0.066, 
