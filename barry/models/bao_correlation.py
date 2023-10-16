@@ -30,7 +30,6 @@ class CorrelationFunctionFit(Model):
         vary_neff=False,
         vary_phase_shift_neff=False,
         use_classorcamb='CAMB',
-        sound_horizon_dragepoch_template=None,
         
     ):
 
@@ -61,7 +60,6 @@ class CorrelationFunctionFit(Model):
             vary_neff=vary_neff,
             vary_phase_shift_neff=vary_phase_shift_neff,
             use_classorcamb=use_classorcamb,
-            sound_horizon_dragepoch_template=sound_horizon_dragepoch_template,
         )
         if smooth_type is None:
             self.smooth_type = {"method": "hinton2017"}
@@ -94,7 +92,6 @@ class CorrelationFunctionFit(Model):
         self.fixed_xi = False
         self.store_xi = [None, None, None]
         self.store_xi_smooth = [None, None, None]
-        self.sound_horizon_dragepoch_template=sound_horizon_dragepoch_template
         
 
     def set_marg(self, fix_params, poly_poles, n_poly, do_bias=False):

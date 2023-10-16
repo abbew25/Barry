@@ -33,7 +33,6 @@ class PowerSpectrumFit(Model):
         vary_phase_shift_neff=False, 
         vary_neff=False,
         use_classorcamb='CAMB',
-        sound_horizon_dragepoch_template=None,   
         
     ):
         """Generic power spectrum function model
@@ -107,7 +106,6 @@ class PowerSpectrumFit(Model):
         self.kvals = None
         self.pksmooth = None
         self.pkratio = None
-        self.sound_horizon_dragepoch_template=sound_horizon_dragepoch_template   
         
         
     def fitting_func_ps(self, kvals, phi_inf=0.227, kstar=0.0324, epsilon=0.872):
@@ -340,16 +338,13 @@ class PowerSpectrumFit(Model):
         # differs from our implementation of the Beutler2017 isotropic model quite a bit. This results in some duplication
         # of code and a few nested if statements, but it's perhaps more readable and a little faster (because we only
         # need one interpolation for the whole isotropic monopole, rather than separately for the smooth and wiggle components)
-        if self.sound_horizon_dragepoch_template is None and vary_phase_shift_neff:
-            self.logger.info("Exception raised as value for drag epoch sound horizon is None.")
-            raise Exception("No value for r_s,fid (for the template).")
         
         if self.isotropic:
             pk = [np.zeros(len(k))]
             kprime = k if for_corr else k / p["alpha"]
             
             if self.param_dict["beta_phase_shift"].active:
-                rdrag_fid = self.sound_horizon_dragepoch_template # self.camb.get_data(om=p["om"],Neff=p["Neff"])['r_s']
+                rdrag_fid = self.camb.get_data(om=p["om"],Neff=p["Neff"])['r_s']
                 kprime_phaseshift = kprime + (p['beta_phase_shift'] - 1.0)*self.fitting_func_ps(k)/rdrag_fid
                 
             pk_smooth = splev(kprime, splrep(ks, pk_smooth_lin))
@@ -381,7 +376,7 @@ class PowerSpectrumFit(Model):
             
             # additional term for varying the phase shift added to kprime goes to zero when beta_face_shift = 1.0 (standard value of Neff=3.044) 
             if self.param_dict["beta_phase_shift"].active:
-                rdrag_fid = self.sound_horizon_dragepoch_template  #self.camb.get_data(om=p["om"],Neff=p["Neff"])['r_s']
+                rdrag_fid = self.camb.get_data(om=p["om"],Neff=p["Neff"])['r_s']
                 karr = np.tile(k, (self.nmu, 1)).T
                 kprime_phaseshift = kprime + (p['beta_phase_shift'] - 1.0)*self.fitting_func_ps(karr)/rdrag_fid
                 
