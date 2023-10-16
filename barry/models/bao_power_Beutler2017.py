@@ -32,6 +32,7 @@ class PowerBeutler2017(PowerSpectrumFit):
         vary_neff=False,
         vary_phase_shift_neff=False,
         use_classorcamb='CAMB'
+        sound_horizon_dragepoch_template=None,
     ):
 
         self.dilate_smooth = dilate_smooth
@@ -54,6 +55,7 @@ class PowerBeutler2017(PowerSpectrumFit):
             vary_neff=vary_neff,
             vary_phase_shift_neff=vary_phase_shift_neff,
             use_classorcamb=use_classorcamb,
+            sound_horizon_dragepoch_template=sound_horizon_dragepoch_template,
         )
         
         fix_params = [param for param in fix_params]
@@ -65,7 +67,6 @@ class PowerBeutler2017(PowerSpectrumFit):
         fix_params = tuple(fix_params) 
 
         self.set_marg(fix_params, poly_poles, n_poly, do_bias=True)
-        
         
     def declare_parameters(self):
         super().declare_parameters()
@@ -125,6 +126,10 @@ class PowerBeutler2017(PowerSpectrumFit):
         # of code and a few nested if statements, but it's perhaps more readable and a little faster (because we only
         # need one interpolation for the whole isotropic monopole, rather than separately for the smooth and wiggle components)
         
+        if self.sound_horizon_dragepoch_template is None and vary_phase_shift_neff:
+            self.logger.info("Exception raised as value for drag epoch sound horizon is None.")
+            raise Exception("No value for r_s,fid (for the template).")
+        
         if not for_corr:
             if "b{0}" not in p:
                 p = self.deal_with_ndata(p, 0)
@@ -138,7 +143,7 @@ class PowerBeutler2017(PowerSpectrumFit):
             
             # additional term for varying the phase shift added to kprime goes to zero when beta_face_shift = 1.0 (standard value of Neff=3.044) 
             if self.param_dict["beta_phase_shift"].active:
-                rdrag_fid = self.camb.get_data(om=p["om"],Neff=p["Neff"])['r_s']
+                rdrag_fid = self.sound_horizon_dragepoch_template #self.camb.get_data(om=p["om"],Neff=p["Neff"])['r_s']
                 kprime_phaseshift = kprime + (p['beta_phase_shift'] - 1.0)*self.fitting_func_ps(k)/rdrag_fid
                 #kprime_phaseshift = kprime + (p['beta_phase_shift'] - 1.0)*self.fitting_func_ps(kprime)/rdrag_fid
                 
@@ -181,7 +186,7 @@ class PowerBeutler2017(PowerSpectrumFit):
             
             # additional term for varying the phase shift added to kprime goes to zero when beta_face_shift = 1.0 (standard value of Neff=3.044) 
             if self.param_dict["beta_phase_shift"].active:
-                rdrag_fid = self.camb.get_data(om=p["om"],Neff=p["Neff"])['r_s']
+                rdrag_fid = self.sound_horizon_dragepoch_template #self.camb.get_data(om=p["om"],Neff=p["Neff"])['r_s']
                 karr = np.tile(k, (self.nmu, 1)).T
                 kprime_phaseshift = kprime + (p['beta_phase_shift'] - 1.0)*self.fitting_func_ps(karr)/rdrag_fid
                 #kprime_phaseshift = kprime + (p['beta_phase_shift'] - 1.0)*self.fitting_func_ps(kprime)/rdrag_fid

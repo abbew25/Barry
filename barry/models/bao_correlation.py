@@ -29,7 +29,9 @@ class CorrelationFunctionFit(Model):
         n_poly=3,
         vary_neff=False,
         vary_phase_shift_neff=False,
-        use_classorcamb='CAMB'
+        use_classorcamb='CAMB',
+        sound_horizon_dragepoch_template=None,
+        
     ):
 
         """Generic correlation function model
@@ -58,7 +60,8 @@ class CorrelationFunctionFit(Model):
             n_poly=n_poly,
             vary_neff=vary_neff,
             vary_phase_shift_neff=vary_phase_shift_neff,
-            use_classorcamb=use_classorcamb
+            use_classorcamb=use_classorcamb,
+            sound_horizon_dragepoch_template=sound_horizon_dragepoch_template,
         )
         if smooth_type is None:
             self.smooth_type = {"method": "hinton2017"}
@@ -91,6 +94,8 @@ class CorrelationFunctionFit(Model):
         self.fixed_xi = False
         self.store_xi = [None, None, None]
         self.store_xi_smooth = [None, None, None]
+        self.sound_horizon_dragepoch_template=sound_horizon_dragepoch_template
+        
 
     def set_marg(self, fix_params, poly_poles, n_poly, do_bias=False):
 
@@ -205,7 +210,7 @@ class CorrelationFunctionFit(Model):
         self.add_param("om", r"$\Omega_m$", 0.1, 0.5, 0.31)  # Cosmology
         self.add_param("Neff", r"$N_{\mathrm{eff}}$", 0.0, 5.0, 3.044)  # Cosmology 
         self.add_param("alpha", r"$\alpha$", 0.8, 1.2, 1.0)  # Stretch for monopole
-        self.add_param("beta_phase_shift", r"$\beta_{\phi(N_{\mathrm{eff}})}$", -4.0, 6.0, 1.0) # phase shift parameter due to Neff 
+        self.add_param("beta_phase_shift", r"$\beta_{\phi(N_{\mathrm{eff}})}$", -1.0, 3.0, 1.0) # phase shift parameter due to Neff 
         if not self.isotropic:
             self.add_param("epsilon", r"$\epsilon$", -0.2, 0.2, 0.0)  # Stretch for multipoles
 
@@ -622,7 +627,7 @@ class CorrelationFunctionFit(Model):
         err = np.sqrt(np.diag(self.data[0]["cov"]))
 
         new_chi_squared, dof, bband, mods, smooths = self.get_model_summary(params, smooth_params=smooth_params)
-
+    
         # Split up the different multipoles if we have them
         if len(err) > len(ss):
             assert len(err) % len(ss) == 0, f"Cannot split your data - have {len(err)} points and {len(ss)} bins"

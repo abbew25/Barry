@@ -27,7 +27,8 @@ class CorrBeutler2017(CorrelationFunctionFit):
         n_poly=3,
         vary_neff=False,
         vary_phase_shift_neff=False,
-        use_classorcamb='CAMB'
+        use_classorcamb='CAMB',
+        sound_horizon_dragepoch_template=None,
     ):
 
         self.dilate_smooth = dilate_smooth
@@ -46,7 +47,8 @@ class CorrBeutler2017(CorrelationFunctionFit):
             n_poly=n_poly,
             vary_neff=vary_neff,
             vary_phase_shift_neff=vary_phase_shift_neff,
-            use_classorcamb=use_classorcamb
+            use_classorcamb=use_classorcamb,
+            sound_horizon_dragepoch_template=sound_horizon_dragepoch_template,
         )
         self.parent = PowerBeutler2017(
             fix_params=fix_params,
@@ -60,7 +62,8 @@ class CorrBeutler2017(CorrelationFunctionFit):
             n_poly=n_poly,
             vary_neff=vary_neff,
             vary_phase_shift_neff=vary_phase_shift_neff,
-            use_classorcamb=use_classorcamb
+            use_classorcamb=use_classorcamb,
+            sound_horizon_dragepoch_template=sound_horizon_dragepoch_template,
         )
         
         fix_params = [param for param in fix_params]
@@ -72,6 +75,7 @@ class CorrBeutler2017(CorrelationFunctionFit):
         fix_params = tuple(fix_params) 
 
         self.set_marg(fix_params, poly_poles, n_poly, do_bias=False)
+        self.sound_horizon_dragepoch_template=sound_horizon_dragepoch_template
 
     def declare_parameters(self):
         super().declare_parameters()

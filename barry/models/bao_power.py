@@ -32,7 +32,9 @@ class PowerSpectrumFit(Model):
         data_share_poly=False,
         vary_phase_shift_neff=False, 
         vary_neff=False,
-        use_classorcamb='CAMB'
+        use_classorcamb='CAMB',
+        sound_horizon_dragepoch_template=None,   
+        
     ):
         """Generic power spectrum function model
 
@@ -105,6 +107,8 @@ class PowerSpectrumFit(Model):
         self.kvals = None
         self.pksmooth = None
         self.pkratio = None
+        self.sound_horizon_dragepoch_template=sound_horizon_dragepoch_template   
+        
         
     def fitting_func_ps(self, kvals, phi_inf=0.227, kstar=0.0324, epsilon=0.872):
         """Fitting function for the scale-dependent component of the Baumann et al 2017 
@@ -209,7 +213,7 @@ class PowerSpectrumFit(Model):
         self.add_param("om", r"$\Omega_m$", 0.1, 0.5, 0.31)  # Cosmology
         self.add_param("Neff", r"$N_{\mathrm{eff}}$", 0.0, 5.0, 3.044)  # Cosmology 
         self.add_param("alpha", r"$\alpha$", 0.8, 1.2, 1.0)  # Stretch for monopole
-        self.add_param("beta_phase_shift", r"$\beta_{\phi(N_{\mathrm{eff}})}$", -4.0, 6.0, 1.0) # phase shift parameter due to Neff 
+        self.add_param("beta_phase_shift", r"$\beta_{\phi(N_{\mathrm{eff}})}$", -1.0, 3.0, 1.0) # phase shift parameter due to Neff 
         if not self.isotropic:
             self.add_param("epsilon", r"$\epsilon$", -0.2, 0.2, 0.0)  # Stretch for multipoles
         
@@ -336,13 +340,16 @@ class PowerSpectrumFit(Model):
         # differs from our implementation of the Beutler2017 isotropic model quite a bit. This results in some duplication
         # of code and a few nested if statements, but it's perhaps more readable and a little faster (because we only
         # need one interpolation for the whole isotropic monopole, rather than separately for the smooth and wiggle components)
-
+        if self.sound_horizon_dragepoch_template is None and vary_phase_shift_neff:
+            self.logger.info("Exception raised as value for drag epoch sound horizon is None.")
+            raise Exception("No value for r_s,fid (for the template).")
+        
         if self.isotropic:
             pk = [np.zeros(len(k))]
             kprime = k if for_corr else k / p["alpha"]
             
             if self.param_dict["beta_phase_shift"].active:
-                rdrag_fid = self.camb.get_data(om=p["om"],Neff=p["Neff"])['r_s']
+                rdrag_fid = self.sound_horizon_dragepoch_template # self.camb.get_data(om=p["om"],Neff=p["Neff"])['r_s']
                 kprime_phaseshift = kprime + (p['beta_phase_shift'] - 1.0)*self.fitting_func_ps(k)/rdrag_fid
                 
             pk_smooth = splev(kprime, splrep(ks, pk_smooth_lin))
@@ -374,7 +381,7 @@ class PowerSpectrumFit(Model):
             
             # additional term for varying the phase shift added to kprime goes to zero when beta_face_shift = 1.0 (standard value of Neff=3.044) 
             if self.param_dict["beta_phase_shift"].active:
-                rdrag_fid = self.camb.get_data(om=p["om"],Neff=p["Neff"])['r_s']
+                rdrag_fid = self.sound_horizon_dragepoch_template  #self.camb.get_data(om=p["om"],Neff=p["Neff"])['r_s']
                 karr = np.tile(k, (self.nmu, 1)).T
                 kprime_phaseshift = kprime + (p['beta_phase_shift'] - 1.0)*self.fitting_func_ps(karr)/rdrag_fid
                 
@@ -843,6 +850,7 @@ class PowerSpectrumFit(Model):
         err = np.sqrt(np.diag(self.data[0]["cov"]))
 
         new_chi_squared, dof, bband, mods, smooths = self.get_model_summary(params, window=window, smooth_params=smooth_params)
+        #print(params)
 
         # Split up the different multipoles if we have them
         if len(err) > len(ks):
