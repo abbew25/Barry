@@ -5,7 +5,7 @@ import numpy as np
 
 sys.path.append("../../Barry/")     # Change this so that it points to where you have Barry installed
 
-from barry.samplers import NautilusSampler#DynestySampler
+from barry.samplers import NautilusSampler
 from barry.config import setup
 from barry.models import PowerBeutler2017, CorrBeutler2017 # Beutler et al 2017 methods for calculation power spectrum, correlation function 
 from barry.datasets.dataset_power_spectrum import PowerSpectrum_DESI_KP4 # classes with methods for fitting data? 
@@ -28,6 +28,17 @@ if __name__ == "__main__":
     sigma_nl_par = {None: 8.7, "sym": 5.4}
     sigma_nl_perp = {None: 4.0, "sym": 1.5}
     sigma_s = {None: 3.5, "sym": 0.0}
+    
+    cosmology000 = { # set values of cosmological parameters if desired (otherwise a default choice is used)
+        "om": (0.02237+0.12)/(0.6763**2),
+        "h0": 0.6763,
+        "z":  1.1,
+        "ob": 0.02237/(0.6763**2),
+        "ns": 0.9649,
+        "mnu": 0.06,
+        "reconsmoothscale": 15,
+        "Neff": 3.044,
+    }
     
     # Loop over the mocktypes
     allnames = []
@@ -72,14 +83,15 @@ if __name__ == "__main__":
                 recon=dataset_pk.recon,                   
                 isotropic=dataset_pk.isotropic,
                 marg="full",                              # Analytic marginalisation
-                fix_params=[],
+                fix_params=["alpha", "epsilon", "beta"],
                 poly_poles=dataset_pk.fit_poles,
                 correction=Correction.NONE,               # No covariance matrix debiasing
-                n_poly=6,                                 # 6 polynomial terms for P(k)
+                n_poly=5,                                 # 6 polynomial terms for P(k)
             )
+            #print(model.camb)
+            #exit() 
             #print(model.get_active_params())
             #exit()
-            
 #             print(dataset_pk.recon)
 #             print(dataset_pk.isotropic)
 #             print(dataset_pk.fit_poles)
@@ -106,12 +118,14 @@ if __name__ == "__main__":
             model.set_default("sigma_nl_par", sigma_nl_par[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
             model.set_default("sigma_nl_perp", sigma_nl_perp[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
             model.set_default("sigma_s", sigma_s[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
-
-            # Load in the proper DESI BAO template rather than Barry computing its own.
+            model.set_cosmology(cosmology000)
+            # if i == 0:
+            #     k = model.camb.ks
+            #     model.camb._generate_data() 
+            # # Load in the proper DESI BAO template rather than Barry computing its own.
             # pktemplate = np.loadtxt("../prepare_data/DESI_Pk_template.dat")
-            pktemplate = np.loadtxt("DESI_Pk_template.dat")
-            
-            model.kvals, model.pksmooth, model.pkratio = pktemplate.T
+            #pktemplate = np.loadtxt("DESI_Pk_template.dat")
+            #model.kvals, model.pksmooth, model.pkratio = pktemplate.T
 
             # Give the data+model pair a name and assign it to the list of fits
             name = dataset_pk.name + " mock mean"
@@ -134,7 +148,7 @@ if __name__ == "__main__":
                 poly_poles=dataset_xi.fit_poles,
                 correction=Correction.NONE,
                 n_poly=3,    # 3 polynomial terms for Xi(s)
-                fix_params=[]
+                fix_params=["alpha", "epsilon", "beta"]
             )
 
             # Set Gaussian priors for the BAO damping centred on the optimal values 
@@ -142,10 +156,11 @@ if __name__ == "__main__":
             model.set_default("sigma_nl_par", sigma_nl_par[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
             model.set_default("sigma_nl_perp", sigma_nl_perp[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
             model.set_default("sigma_s", sigma_s[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
+            model.set_cosmology(cosmology000)
 
             #pktemplate = np.loadtxt("../prepare_data/DESI_Pk_template.dat")
-            pktemplate = np.loadtxt("DESI_Pk_template.dat")
-            model.parent.kvals, model.parent.pksmooth, model.parent.pkratio = pktemplate.T
+            #pktemplate = np.loadtxt("DESI_Pk_template.dat")
+            #model.parent.kvals, model.parent.pksmooth, model.parent.pkratio = pktemplate.T
 
             name = dataset_xi.name + " mock mean"
             fitter.add_model_and_dataset(model, dataset_xi, name=name)

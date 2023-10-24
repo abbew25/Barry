@@ -24,6 +24,16 @@ if __name__ == "__main__":
     #sampler = DynestySampler(temp_dir=dir_name, nlive=500)
     sampler = NautilusSampler(temp_dir=dir_name, nlive=500)
     
+    # cosmology000 = {
+    #         "om": (0.12+0.02237)/(0.6763**2),
+    #         "h0": 0.6763,
+    #         "z":  0.51,
+    #         "ob": 0.02237/(0.6763**2),
+    #         "ns": 0.9649,
+    #         "mnu": 0.06,
+    #         "reconsmoothscale": 15,
+    #         "Neff": 3.046,
+    #     }
     
     # The optimal sigma values we found when fitting the mocks with fixed alpha/epsilon
     sigma_nl_par = {None: 8.7, "sym": 5.4}
@@ -52,6 +62,8 @@ if __name__ == "__main__":
                 #data_location="../prepare_data/",
                 data_location="/global/u1/a/abbew25/barryrepo/Barry/cosmodesi_KP4ELG_examplecode_make_picklefiles",
             )
+            #print(dir(dataset_pk))
+            #exit()
 
             dataset_xi = CorrelationFunction_DESI_KP4(
                 recon=recon,
@@ -77,23 +89,13 @@ if __name__ == "__main__":
                 n_poly=6,                                 # 6 polynomial terms for P(k)
                 #vary_neff=True, 
             )
-            
+            #model.set_cosmology(cosmology000)
+        
 #             print(dataset_pk.recon)
 #             print(dataset_pk.isotropic)
 #             print(dataset_pk.fit_poles)
             
 #             #exit()
-#             cosmology = {
-#             "om": 0.31,
-#             "h0": 0.67,
-#             "z":  0.51,
-#             "ob": 0.048,
-#             "ns": 0.97,
-#             "mnu": 0.0,
-#             "reconsmoothscale": 15,
-#             "Neff": 3.044,
-#         }
-#             model.set_cosmology(cosmology)
             
 #             params_dict = {i.name: i.default for i in model.params}
 #             res = model.compute_power_spectrum(np.logspace(-2, 2, 100, base=10), params_dict)
@@ -104,6 +106,7 @@ if __name__ == "__main__":
             model.set_default("sigma_nl_par", sigma_nl_par[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
             model.set_default("sigma_nl_perp", sigma_nl_perp[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
             model.set_default("sigma_s", sigma_s[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
+        
 
             # Load in the proper DESI BAO template rather than Barry computing its own.
             # pktemplate = np.loadtxt("../prepare_data/DESI_Pk_template.dat")
@@ -132,12 +135,16 @@ if __name__ == "__main__":
                 n_poly=3,    # 3 polynomial terms for Xi(s)
                 #fix_params = ["om", "sigma_s"] # fixing sigma_s
             )
+            #model.set_cosmology(cosmology000)
+            
 
             # Set Gaussian priors for the BAO damping centred on the optimal values 
             # found from fitting with fixed alpha/epsilon and with width 2 Mpc/h
             model.set_default("sigma_nl_par", sigma_nl_par[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
             model.set_default("sigma_nl_perp", sigma_nl_perp[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
             model.set_default("sigma_s", sigma_s[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
+            
+            
             #model.set_default("sigma_s", 0.0)#, min=0.0, max=25.0, sigma=4.0, prior="gaussian")
             #if recon == 'sym':
             #    model.set_default("sigma_nl_par", 15.0, min=0.0, max=25.0, sigma=4.0, prior="gaussian")
