@@ -86,7 +86,7 @@ if __name__ == "__main__":
                 #fix_params=[],#["om"],
                 poly_poles=dataset_pk.fit_poles,
                 correction=Correction.NONE,               # No covariance matrix debiasing
-                n_poly=6,                                 # 6 polynomial terms for P(k)
+                #n_poly=6,                                 # 6 polynomial terms for P(k)
                 #vary_neff=True, 
             )
             #model.set_cosmology(cosmology000)
@@ -132,7 +132,7 @@ if __name__ == "__main__":
                 marg="full",
                 poly_poles=dataset_xi.fit_poles,
                 correction=Correction.NONE,
-                n_poly=3,    # 3 polynomial terms for Xi(s)
+                #n_poly=3,    # 3 polynomial terms for Xi(s)
                 #fix_params = ["om", "sigma_s"] # fixing sigma_s
             )
             #model.set_cosmology(cosmology000)

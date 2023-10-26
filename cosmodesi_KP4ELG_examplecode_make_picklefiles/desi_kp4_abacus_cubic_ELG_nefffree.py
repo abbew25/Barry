@@ -33,7 +33,7 @@ if __name__ == "__main__":
     cosmology000 = { # set values of cosmological parameters if desired (otherwise a default choice is used)
         "om": (0.02237+0.12)/(0.6763**2),
         "h0": 0.6763,
-        "z":  1.1,
+        "z":  1.1, 
         "ob": 0.02237/(0.6763**2),
         "ns": 0.9649,
         "mnu": 0.06,
@@ -63,6 +63,9 @@ if __name__ == "__main__":
                 #data_location="../prepare_data/",
                 data_location="/global/u1/a/abbew25/barryrepo/Barry/cosmodesi_KP4ELG_examplecode_make_picklefiles",
             )
+            
+            #print(dataset_pk[0])
+            #exit()
 
             # ------------------------------------------------------------------------------------------------------
             dataset_xi = CorrelationFunction_DESI_KP4(
@@ -84,10 +87,10 @@ if __name__ == "__main__":
                 recon=dataset_pk.recon,                   
                 isotropic=dataset_pk.isotropic,
                 marg="full",                              # Analytic marginalisation
-                fix_params=["epsilon", "alpha", "beta"],
+                #fix_params=[],
                 poly_poles=dataset_pk.fit_poles,
                 correction=Correction.NONE,               # No covariance matrix debiasing
-                n_poly=6,                                 # 6 polynomial terms for P(k)
+                #n_poly=6,                                 # 6 polynomial terms for P(k)
                 vary_neff=True, 
             )
             #print(model.get_active_params())
@@ -120,9 +123,10 @@ if __name__ == "__main__":
             model.set_default("sigma_nl_perp", sigma_nl_perp[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
             model.set_default("sigma_s", sigma_s[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
             model.set_cosmology(cosmology000)
+            model.set_default("beta", 0.775)
             # if i == 0:
-            #     k = model.camb.ks
-            #     model.camb._generate_data() 
+            #      k = model.camb.ks
+            #      model.camb._generate_data() 
             # Load in the proper DESI BAO template rather than Barry computing its own.
             # pktemplate = np.loadtxt("../prepare_data/DESI_Pk_template.dat")
             pktemplate = np.loadtxt("DESI_Pk_template.dat")
@@ -152,9 +156,9 @@ if __name__ == "__main__":
                 marg="full",
                 poly_poles=dataset_xi.fit_poles,
                 correction=Correction.NONE,
-                n_poly=3,    # 4 polynomial terms for Xi(s)
+                #n_poly=3,    # 4 polynomial terms for Xi(s)
                 vary_neff=True,
-                fix_params=["epsilon", "alpha", "beta"]
+                #fix_params=[]
             )
 
             # Set Gaussian priors for the BAO damping centred on the optimal values 
@@ -163,6 +167,7 @@ if __name__ == "__main__":
             model.set_default("sigma_nl_perp", sigma_nl_perp[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
             model.set_default("sigma_s", sigma_s[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
             model.set_cosmology(cosmology000)
+            model.set_default("beta", 0.775)
             
             #pktemplate = np.loadtxt("../prepare_data/DESI_Pk_template.dat")
             pktemplate = np.loadtxt("DESI_Pk_template.dat")

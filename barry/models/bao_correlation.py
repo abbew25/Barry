@@ -62,7 +62,8 @@ class CorrelationFunctionFit(Model):
             broadband_type=None,
         )
         if smooth_type is None:
-            self.smooth_type = {"method": "hinton2017"}
+            smooth_type = {"method": "hinton2017"}
+        self.smooth_type = smooth_type
         if not validate_smooth_method(self.smooth_type):
             exit(0)
 
@@ -164,6 +165,7 @@ class CorrelationFunctionFit(Model):
         # self.pk2xi_2 = PowerToCorrelationFFTLog(ell=2, r0=50.0)
         # self.pk2xi_4 = PowerToCorrelationFFTLog(ell=4, r0=50.0)
         cambpk = 0
+        # self.logger.info(data[0]["cosmology"])
         if "Neff" in data[0]["cosmology"]: 
             cambpk = self.camb.get_data(om=data[0]["cosmology"]["om"], h0=data[0]["cosmology"]["h0"], 
                                        Neff=data[0]["cosmology"]["Neff"])

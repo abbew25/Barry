@@ -294,7 +294,7 @@ if __name__ == "__main__":
     # model.set_default("sigma_nl_perp", 1.0, min=0.0, max=20.0, sigma=2.0, prior="gaussian")
 
         
-    )
+    #)
     model.set_default("sigma_nl_par", 4.75, min=0.0, max=20.0, sigma=2.0, prior="gaussian")
     model.set_default("sigma_nl_perp", 1.50, min=0.0, max=20.0, sigma=2.0, prior="gaussian")
     model.set_default("sigma_s", 0.0, min=0.0, max=20.0, sigma=2.0, prior="gaussian")
