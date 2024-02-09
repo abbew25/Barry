@@ -21,13 +21,17 @@ class CorrBeutler2017(CorrelationFunctionFit):
         poly_poles=(0, 2),
         marg=None,
         dilate_smooth=False,
-        n_poly=(0, 2),
         vary_neff=False,
         vary_phase_shift_neff=False,
         use_classorcamb='CAMB',
+        fog_wiggles=False,
+        include_binmat=True,
+        broadband_type="spline",
+        **kwargs,
     ):
 
         self.dilate_smooth = dilate_smooth
+        self.fog_wiggles = fog_wiggles
 
         super().__init__(
             name=name,
@@ -39,10 +43,12 @@ class CorrBeutler2017(CorrelationFunctionFit):
             isotropic=isotropic,
             poly_poles=poly_poles,
             marg=marg,
-            n_poly=n_poly,
             vary_neff=vary_neff,
             vary_phase_shift_neff=vary_phase_shift_neff,
             use_classorcamb=use_classorcamb,
+            include_binmat=include_binmat,
+            broadband_type=broadband_type,
+            **kwargs,
         )
         self.parent = PowerBeutler2017(
             fix_params=fix_params,
@@ -53,10 +59,10 @@ class CorrBeutler2017(CorrelationFunctionFit):
             isotropic=isotropic,
             marg=marg,
             dilate_smooth=dilate_smooth,
-            n_poly=n_poly,
             vary_neff=vary_neff,
             vary_phase_shift_neff=vary_phase_shift_neff,
             use_classorcamb=use_classorcamb,
+            fog_wiggles=fog_wiggles,
             broadband_type=None,
         )
         
@@ -68,7 +74,7 @@ class CorrBeutler2017(CorrelationFunctionFit):
             
         fix_params = tuple(fix_params) 
 
-        self.set_marg(fix_params, poly_poles, n_poly, do_bias=True, marg_bias=1)
+        self.set_marg(fix_params, do_bias=False, marg_bias=0)
 
     def declare_parameters(self):
         super().declare_parameters()
@@ -79,9 +85,6 @@ class CorrBeutler2017(CorrelationFunctionFit):
             self.add_param("beta", r"$\beta$", 0.01, 4.0, None)  # RSD parameter f/b
             self.add_param("sigma_nl_par", r"$\Sigma_{nl,||}$", 0.0, 20.0, 8.0)  # BAO damping parallel to LOS
             self.add_param("sigma_nl_perp", r"$\Sigma_{nl,\perp}$", 0.0, 20.0, 4.0)  # BAO damping perpendicular to LOS
-        for pole in self.poly_poles:
-            for ip in self.n_poly:
-                self.add_param(f"a{{{pole}}}_{{{ip}}}_{{{1}}}", f"$a_{{{pole},{ip},1}}$", -10.0, 10.0, 0)
 
 #     def compute_correlation_function(self, dist, p, smooth=False, vary_neff=False):
 #         """Computes the correlation function model using the Beutler et. al., 2017 power spectrum
@@ -133,14 +136,13 @@ if __name__ == "__main__":
 
     dataset = CorrelationFunction_DESI_KP4(
         recon="sym",
-        fit_poles=[0, 2, 4],
+        fit_poles=[0, 2],
         min_dist=52.0,
         max_dist=150.0,
         realisation=None,
         num_mocks=1000,
         reduce_cov_factor=25,
     )
-    data = dataset.get_data()
 
     model = CorrBeutler2017(
         recon=dataset.recon,
@@ -148,12 +150,12 @@ if __name__ == "__main__":
         marg="full",
         fix_params=["om"],
         poly_poles=dataset.fit_poles,
-        correction=Correction.NONE,
+        correction=Correction.HARTLAP,
         n_poly=[0, 2],
     )
-    model.set_default("sigma_nl_par", 5.4, min=0.0, max=20.0, sigma=2.0, prior="gaussian")
-    model.set_default("sigma_nl_perp", 1.6, min=0.0, max=20.0, sigma=2.0, prior="gaussian")
-    model.set_default("sigma_s", 0.0, min=0.0, max=20.0, sigma=2.0, prior="gaussian")
+    model.set_default("sigma_nl_par", 5.0, min=0.0, max=20.0, sigma=2.0, prior="gaussian")
+    model.set_default("sigma_nl_perp", 2.0, min=0.0, max=20.0, sigma=1.0, prior="gaussian")
+    model.set_default("sigma_s", 2.0, min=0.0, max=20.0, sigma=2.0, prior="gaussian")
 
     # Load in a pre-existing BAO template
     pktemplate = np.loadtxt("../../barry/data/desi_kp4/DESI_Pk_template.dat")

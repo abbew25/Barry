@@ -1,4 +1,5 @@
 import sys
+import os
 
 sys.path.append("..")
 sys.path.append("../..")
@@ -13,6 +14,7 @@ import scipy as sp
 import pandas as pd
 from barry.models.model import Correction
 from barry.utils import weighted_avg_and_cov
+import matplotlib.colors as mplc
 import matplotlib.pyplot as plt
 import pickle
 from chainconsumer import ChainConsumer
@@ -54,17 +56,21 @@ def plot_errors(stats, data_sig, figname):
 if __name__ == "__main__":
 
     # Get the relative file paths and names
-    pfn, dir_name, file = setup(__file__, "/v2/")
+    pfn, dir_name, file = setup(__file__, "/v3/")
 
     # Set up the Fitting class and Dynesty sampler with 250 live points.
     fitter = Fitter(dir_name, remove_output=False)
     sampler = NautilusSampler(temp_dir=dir_name)
 
-    colors = ["#CAF270", "#84D57B", "#4AB482", "#219180", "#1A6E73", "#234B5B", "#232C3B"]
+    colors = [mplc.cnames[color] for color in ["orange", "orangered", "firebrick", "lightskyblue", "steelblue", "seagreen", "black"]]
 
-    tracers = {"LRG": [[0.4, 0.6], [0.6, 0.8], [0.8, 1.1]], "ELG_LOP": [[0.8, 1.1], [1.1, 1.6]], "QSO": [[0.8, 2.1]]}
-    nmocks = {"LRG": [0, 25], "ELG_LOP": [0, 25], "QSO": [0, 25]}
-    reconsmooth = {"LRG": 10, "ELG_LOP": 10, "QSO": 20}
+    tracers = {
+        "LRG": [[0.4, 0.6], [0.6, 0.8], [0.8, 1.1]],
+        "ELG_LOP": [[0.8, 1.1], [1.1, 1.6]],
+        "QSO": [[0.8, 2.1]],
+        "BGS_BRIGHT-21.5": [[0.1, 0.4]],
+    }
+    reconsmooth = {"LRG": 10, "ELG_LOP": 10, "QSO": 30, "BGS_BRIGHT-21.5": 15}
     sigma_nl_par = {
         "LRG": [
             [9.0, 6.0],
@@ -73,6 +79,7 @@ if __name__ == "__main__":
         ],
         "ELG_LOP": [[8.5, 6.0], [8.5, 6.0]],
         "QSO": [[9.0, 6.0]],
+        "BGS_BRIGHT-21.5": [[10.0, 8.0]],
     }
     sigma_nl_perp = {
         "LRG": [
@@ -82,8 +89,14 @@ if __name__ == "__main__":
         ],
         "ELG_LOP": [[4.5, 3.0], [4.5, 3.0]],
         "QSO": [[3.5, 3.0]],
+        "BGS_BRIGHT-21.5": [[6.5, 3.0]],
     }
-    sigma_s = {"LRG": [[2.0, 2.0], [2.0, 2.0], [2.0, 2.0]], "ELG_LOP": [[2.0, 2.0], [2.0, 2.0]], "QSO": [[2.0, 2.0]]}
+    sigma_s = {
+        "LRG": [[2.0, 2.0], [2.0, 2.0], [2.0, 2.0]],
+        "ELG_LOP": [[2.0, 2.0], [2.0, 2.0]],
+        "QSO": [[2.0, 2.0]],
+        "BGS_BRIGHT-21.5": [[2.0, 2.0]],
+    }
 
     cap = "gccomb"
     ffa = "ffa"  # Flavour of fibre assignment. Can be "ffa" for fast fiber assign, or "complete"
@@ -98,6 +111,7 @@ if __name__ == "__main__":
     datanames = [f"{t.lower()}_{ffa}_{cap}_{zs[0]}_{zs[1]}" for t in tracers for i, zs in enumerate(tracers[t])]
 
     allnames = []
+    count = 0
     for t in tracers:
         for i, zs in enumerate(tracers[t]):
             for r, recon in enumerate([None, "sym"]):
@@ -109,8 +123,11 @@ if __name__ == "__main__":
                     fix_params=["om"],
                     poly_poles=[0, 2],
                     correction=Correction.NONE,
+                    broadband_type="poly",
                     n_poly=[-2, -1, 0],
                 )
+                model.set_default(f"b{{{0}}}_{{{1}}}", 2.0, min=0.5, max=4.0)
+                model.set_default("beta", 0.4, min=0.1, max=0.7)
                 model.set_default("sigma_nl_par", sigma_nl_par[t][i][r], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
                 model.set_default("sigma_nl_perp", sigma_nl_perp[t][i][r], min=0.0, max=20.0, sigma=1.0, prior="gaussian")
                 model.set_default("sigma_s", sigma_s[t][i][r], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
@@ -131,14 +148,15 @@ if __name__ == "__main__":
                 )
 
                 name = dataset.name + f" mock mean"
-                fitter.add_model_and_dataset(model, dataset, name=name, color=colors[i + 1])
+                fitter.add_model_and_dataset(model, dataset, name=name, color=colors[count])
                 allnames.append(name)
 
                 for j in range(len(dataset.mock_data)):
                     dataset.set_realisation(j)
                     name = dataset.name + f" realisation {j}"
-                    fitter.add_model_and_dataset(model, dataset, name=name, color=colors[i + 1])
+                    fitter.add_model_and_dataset(model, dataset, name=name, color=colors[count])
                     allnames.append(name)
+            count += 1
 
     # Submit all the job. We have quite a few (42), so we'll
     # only assign 1 walker (processor) to each. Note that this will only run if the
@@ -154,6 +172,18 @@ if __name__ == "__main__":
         import logging
 
         logging.info("Creating plots")
+        logger = logging.getLogger()
+        logger.setLevel(logging.WARNING)
+
+        for dataname in datanames:
+            for recon in ["prerecon", "postrecon"]:
+                plotname = f"{dataname}_{recon}"
+                dir_name = "/".join(pfn.split("/")[:-1]) + "/" + plotname
+                try:
+                    if not os.path.exists(dir_name):
+                        os.makedirs(dir_name, exist_ok=True)
+                except Exception:
+                    pass
 
         # Loop over all the fitters
         c = [ChainConsumer() for i in range(2 * len(datanames))]
@@ -175,13 +205,21 @@ if __name__ == "__main__":
             df["$\\alpha_\\parallel$"] = alpha_par
             df["$\\alpha_\\perp$"] = alpha_perp
             df["$\\alpha_{ap}$"] = (1.0 + df["$\\epsilon$"].to_numpy()) ** 3
+            newweight = np.where(
+                np.logical_and(
+                    np.logical_and(df["$\\alpha_\\parallel$"] >= 0.8, df["$\\alpha_\\parallel$"] <= 1.2),
+                    np.logical_and(df["$\\alpha_\\perp$"] >= 0.8, df["$\\alpha_\\perp$"] <= 1.2),
+                ),
+                weight,
+                0.0,
+            )
 
             # Get the MAP point and set the model up at this point
             model.set_data(data)
             r_s = model.camb.get_data()["r_s"]
-            max_post = posterior.argmax()
-            params = df.loc[max_post]
-            params_dict = model.get_param_dict(chain[max_post])
+            max_post = posterior[newweight > 0].argmax()
+            params = df[newweight > 0].iloc[max_post]
+            params_dict = model.get_param_dict(chain[newweight > 0][max_post])
             for name, val in params_dict.items():
                 model.set_default(name, val)
 
@@ -195,7 +233,7 @@ if __name__ == "__main__":
                         "$\\alpha_\\perp$",
                     ]
                 ],
-                weight,
+                newweight,
                 axis=0,
             )
 
@@ -203,7 +241,9 @@ if __name__ == "__main__":
             extra.pop("realisation", None)
             if realisation == "mean":
                 extra.pop("color", None)
-                c[stats_bin].add_chain(df, weights=weight, color="k", **extra, plot_contour=True, plot_point=False, show_as_1d_prior=False)
+                c[stats_bin].add_chain(
+                    df, weights=newweight, color="k", **extra, plot_contour=True, plot_point=False, show_as_1d_prior=False
+                )
                 figname = None
                 mean_mean, cov_mean = mean, cov
             else:
@@ -211,16 +251,29 @@ if __name__ == "__main__":
                 # Get some useful properties of the fit, and plot the MAP model against the data if the bestfit alpha or alpha_ap are outliers compared to the mean fit
                 diff = np.c_[params["$\\alpha_\\parallel$"], params["$\\alpha_\\perp$"]] - mean_mean[2:]
                 outlier = diff @ np.linalg.inv(cov_mean[2:, 2:]) @ diff.T
-                print(outlier, sp.stats.chi2.ppf(0.9545, 2, loc=0, scale=1))
-                figname = (
-                    "/".join(pfn.split("/")[:-1]) + "/" + extra["name"].replace(" ", "_") + "_bestfit.png"
-                    if outlier > sp.stats.chi2.ppf(0.9545, 2, loc=0, scale=1)
-                    else None
-                )
+                # if outlier > sp.stats.chi2.ppf(0.9545, 2, loc=0, scale=1):
+                dataname = extra["name"].split(" ")[3].lower()
+                plotname = f"{dataname}_prerecon" if recon_bin == 0 else f"{dataname}_postrecon"
+                figname = "/".join(pfn.split("/")[:-1]) + "/" + plotname + "/" + extra["name"].replace(" ", "_") + "_contour.png"
+                if not os.path.isfile(figname):
+                    extra.pop("color", None)
+                    cc = ChainConsumer()
+                    cc.add_chain(df, weights=newweight, **extra, color=colors[data_bin])
+                    cc.add_marker(df.iloc[max_post], **extra)
+                    cc.plotter.plot(filename=figname)
+                    figname = "/".join(pfn.split("/")[:-1]) + "/" + plotname + "/" + extra["name"].replace(" ", "_") + "_bestfit.png"
+                else:
+                    figname = None
 
             new_chi_squared, dof, bband, mods, smooths = model.simple_plot(
-                params_dict, display=False, figname=figname, title=extra["name"], c=colors[data_bin + 1]
+                params_dict, display=False, figname=figname, title=extra["name"], c=colors[data_bin]
             )
+            if realisation == "mean":
+                print(25.0 * new_chi_squared, dof)
+
+            if data_bin == 0 and (realisation == "2" or realisation == "21" or realisation == "22"):
+                df["weight"] = newweight
+                df.to_csv("/".join(pfn.split("/")[:-1]) + "/" + plotname + f"_BOSSpoly.dat", index=False, sep=" ")
 
             stats[data_bin][recon_bin].append(
                 [
@@ -235,6 +288,8 @@ if __name__ == "__main__":
                     cov[0, 1] / np.sqrt(cov[0, 0] * cov[1, 1]),
                     cov[2, 3] / np.sqrt(cov[2, 2] * cov[3, 3]),
                     new_chi_squared,
+                    params_dict["alpha"],
+                    params_dict["epsilon"],
                 ]
             )
 
@@ -252,7 +307,7 @@ if __name__ == "__main__":
                         mean[:4],
                         cov[:4, :4],
                         parameters=["$\\alpha$", "$\\alpha_{ap}$", "$\\alpha_\\parallel$", "$\\alpha_\\perp$"],
-                        color=colors[data_bin + 1],
+                        color=colors[data_bin],
                         plot_contour=True,
                         plot_point=False,
                         show_as_1d_prior=False,
@@ -291,24 +346,26 @@ if __name__ == "__main__":
         # Plot histograms of the chi squared values and uncertainties for comparison to the data
         data_sigmas_prerecon = {
             "LRG": [
-                [0.01914048897114662, 0.07010153295955529, 3.14631537e01],
-                [0.024504953045061173, 0.12150022384792725, 4.49891758e01],
-                [0.011767540688530032, 0.04823989601113721, 4.07940393e01],
+                [2.13476261e-02, 8.19697976e-02, 3.13475476e01],
+                [3.84618032e-02, 1.81796845e-01, 4.51304448e01],
+                [1.17559964e-02, 4.78730464e-02, 4.09765663e01],
             ],
             "ELG_LOP": [
-                [0.09043183288774481, 0.2896776382884302, 53.8712616],
-                [0.015996649062431367, 0.055653482135353816, 3.49656306e01],
+                [0.07259544, 0.33597244, 53.88933519],
+                [1.55585571e-02, 5.60864844e-02, 3.50071152e01],
             ],
-            "QSO": [[0.029377613839533523, 0.1342904227952228, 31.78156724]],
+            "QSO": [[0.04056358, 0.1776778, 31.82171538]],
+            "BGS_BRIGHT-21.5": [[0.0, 0.0, 0.0]],
         }
         data_sigmas_postrecon = {
             "LRG": [
-                [9.7586959e-03, 3.1017183e-02, 3.8796406e01],
-                [0.00962757040797696, 0.03070362805708815, 3.86308320e01],
-                [0.007935953770661752, 0.029989033380867336, 2.97028557e01],
+                [9.72285174e-03, 3.07525275e-02, 3.88673070e01],
+                [1.16030400e-02, 4.95732856e-02, 3.59618448e01],
+                [7.98022808e-03, 2.99017318e-02, 2.97362859e01],
             ],
-            "ELG_LOP": [[0.10079159, 0.36624245, 43.09215521], [0.011033510858277806, 0.03830975662578129, 5.17281058e01]],
-            "QSO": [[0.05227388284071255, 0.05267882411109576, 51.08261214]],
+            "ELG_LOP": [[0.07808279, 0.30359661, 45.36431929], [1.11734731e-02, 3.86694268e-02, 5.20012606e01]],
+            "QSO": [[0.0548599, 0.22337127, 51.19776078]],
+            "BGS_BRIGHT-21.5": [[0.0, 0.0, 0.0]],
         }
         for t in tracers:
             for i, zs in enumerate(tracers[t]):
@@ -320,3 +377,5 @@ if __name__ == "__main__":
 
                     plotname = f"{dataname}_prerecon" if recon_bin == 0 else f"{dataname}_postrecon"
                     plot_errors(stats[data_bin][recon_bin], data_sig, "/".join(pfn.split("/")[:-1]) + "/" + plotname + f"_errors.png")
+
+                    np.save("/".join(pfn.split("/")[:-1]) + "/Summary_" + plotname + f".npy", stats[data_bin][recon_bin])

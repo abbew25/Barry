@@ -23,114 +23,137 @@ def plot_alphas(stats, figname):
 
     colors = ["#84D57B", "#4AB482", "#219180", "#1A6E73", "#234B5B", "#232C3B"]
 
-    xis, pks = np.array(stats[0]), np.array(stats[1])
-
     # Split up Pk and Xi
     fig = plt.figure(figsize=(8, 2))
-    axes = gridspec.GridSpec(
-        2, 2, figure=fig, width_ratios=[1.25 / 6.0, 5.0 / 6.0], left=0.1, top=0.95, bottom=0.05, right=0.95, hspace=0.0, wspace=0.3
-    )
-    axes1 = axes[0, 1].subgridspec(1, 4, hspace=0.0, wspace=0.0)
-    axes2 = axes[1, 1].subgridspec(1, 4, hspace=0.0, wspace=0.0)
+    axes = gridspec.GridSpec(2, 2, figure=fig, width_ratios=[0.5, 0.5], left=0.1, top=0.95, bottom=0.05, right=0.95, hspace=0.0, wspace=0.3)
 
-    ax1, ax2 = fig.add_subplot(axes[0, 0]), fig.add_subplot(axes[1, 0])
-    ax1.plot(pks[:, 0], pks[:, 2] * 100.0, color=colors[0], zorder=1, alpha=0.75, lw=0.8)
-    ax2.plot(pks[:, 0], pks[:, 3] * 100.0, color=colors[0], zorder=1, alpha=0.75, lw=0.8)
-    ax1.fill_between(
-        pks[:, 0],
-        (pks[:, 2] - pks[:, 4]) * 100.0,
-        (pks[:, 2] + pks[:, 4]) * 100.0,
-        color=colors[0],
-        zorder=1,
-        alpha=0.5,
-        lw=0.8,
-    )
-    ax2.fill_between(
-        pks[:, 0],
-        (pks[:, 3] - pks[:, 5]) * 100.0,
-        (pks[:, 3] + pks[:, 5]) * 100.0,
-        color=colors[0],
-        zorder=1,
-        alpha=0.5,
-        lw=0.8,
-    )
-    ax1.set_xlim(1.3, 6.7)
-    ax2.set_xlim(1.3, 6.7)
-    ax1.set_ylim(-0.75, 0.75)
-    ax2.set_ylim(-0.45, 0.45)
-    ax2.set_xlabel(r"$\Sigma_{nl,||}$")
-    ax1.set_ylabel(r"$\alpha_{||} - 1\,(\%)$")
-    ax2.set_ylabel(r"$\alpha_{\perp} - 1\,(\%)$")
-    ax1.set_xticklabels([])
-    for val, ls in zip([-0.1, 0.0, 0.1], [":", "--", ":"]):
-        ax1.axhline(val, color="k", ls=ls, zorder=0, lw=0.8)
-        ax2.axhline(val, color="k", ls=ls, zorder=0, lw=0.8)
-    ax1.axvline(4.75, color="k", ls=":", zorder=0, lw=0.8)
-    ax2.axvline(4.75, color="k", ls=":", zorder=0, lw=0.8)
-    ax1.text(
-        0.05,
-        0.95,
-        f"$P(k)$",
-        transform=ax1.transAxes,
-        ha="left",
-        va="top",
-        fontsize=8,
-        color=colors[0],
-    )
+    for ind in range(2):
+        dat = np.array(stats[ind])
+        tracer = r"$\xi(s)$" if ind == 0 else r"$P(k)$"
+        axes1 = axes[0, ind].subgridspec(1, 2, hspace=0.0, wspace=0.0)
+        axes2 = axes[1, ind].subgridspec(1, 2, hspace=0.0, wspace=0.0)
+        for n_poly in range(2):
+            bb = "Polynomial" if n_poly == 0 else "Spline"
+            ax1 = fig.add_subplot(axes1[n_poly])
+            ax2 = fig.add_subplot(axes2[n_poly])
 
-    # Further split up Xi into different polynomial types
-    for n_poly in range(4):
-        ax1 = fig.add_subplot(axes1[n_poly])
-        ax2 = fig.add_subplot(axes2[n_poly])
+            index = np.where(dat[:, 1] == n_poly)[0]
 
-        index = np.where(xis[:, 1] == n_poly + 1)[0]
+            ax1.plot(dat[index, 0], dat[index, 2] * 100.0, color=colors[n_poly], zorder=1, alpha=0.75, lw=0.8)
+            ax2.plot(dat[index, 0], dat[index, 3] * 100.0, color=colors[n_poly], zorder=1, alpha=0.75, lw=0.8)
+            ax1.fill_between(
+                dat[index, 0],
+                (dat[index, 2] - dat[index, 4]) * 100.0,
+                (dat[index, 2] + dat[index, 4]) * 100.0,
+                color=colors[2 * ind + n_poly],
+                zorder=1,
+                alpha=0.5,
+                lw=0.8,
+            )
+            ax2.fill_between(
+                dat[index, 0],
+                (dat[index, 3] - dat[index, 5]) * 100.0,
+                (dat[index, 3] + dat[index, 5]) * 100.0,
+                color=colors[2 * ind + n_poly],
+                zorder=1,
+                alpha=0.5,
+                lw=0.8,
+            )
+            ax1.set_xlim(1.3, 6.7)
+            ax2.set_xlim(1.3, 6.7)
+            ax1.set_ylim(-0.25, 0.25)
+            ax2.set_ylim(-0.65, 0.65)
+            ax2.set_xlabel(r"$\Sigma_{nl,||}$")
+            if n_poly == 0:
+                ax1.set_ylabel(r"$\Delta \alpha_{\mathrm{iso}}\,(\%)$")
+                ax2.set_ylabel(r"$\Delta \alpha_{\mathrm{ap}}\,(\%)$")
+            else:
+                ax1.set_yticklabels([])
+                ax2.set_yticklabels([])
+            ax1.set_xticklabels([])
+            for val, ls in zip([-0.1, 0.0, 0.1], [":", "--", ":"]):
+                ax1.axhline(val, color="k", ls=ls, zorder=0, lw=0.8)
+            for val, ls in zip([-0.2, 0.0, 0.2], [":", "--", ":"]):
+                ax2.axhline(val, color="k", ls=ls, zorder=0, lw=0.8)
+            ax1.axvline(5.0, color="k", ls=":", zorder=0, lw=0.8)
+            ax2.axvline(5.0, color="k", ls=":", zorder=0, lw=0.8)
+            ax1.text(
+                0.05,
+                0.95,
+                tracer + " " + bb,
+                transform=ax1.transAxes,
+                ha="left",
+                va="top",
+                fontsize=8,
+                color=colors[2 * ind + n_poly],
+            )
 
-        ax1.plot(xis[index, 0], xis[index, 2] * 100.0, color=colors[n_poly + 1], zorder=1, alpha=0.75, lw=0.8)
-        ax2.plot(xis[index, 0], xis[index, 3] * 100.0, color=colors[n_poly + 1], zorder=1, alpha=0.75, lw=0.8)
+    fig.savefig(figname, bbox_inches="tight", transparent=True, dpi=300)
+
+
+def plot_alphas_spline(stats, figname):
+
+    colors = ["#84D57B", "#4AB482", "#219180", "#1A6E73", "#234B5B", "#232C3B"]
+
+    # Split up Pk and Xi
+    fig = plt.figure(figsize=(4, 2))
+    axes = gridspec.GridSpec(2, 2, figure=fig, left=0.1, top=0.95, bottom=0.05, right=0.95, hspace=0.0, wspace=0.0)
+    for ind in range(2):
+        dat = np.array(stats[ind])
+        tracer = r"$\xi(s)$" if ind == 0 else r"$P(k)$"
+        ax1 = fig.add_subplot(axes[0, ind])
+        ax2 = fig.add_subplot(axes[1, ind])
+
+        index = np.where(dat[:, 1] == 0)[0]
+
+        c = "#ff7f0e" if ind == 0 else "#1f77b4"
+        ax1.plot(dat[index, 0], dat[index, 2] * 100.0, color=c, zorder=1, alpha=0.75, lw=0.8)
+        ax2.plot(dat[index, 0], dat[index, 3] * 100.0, color=c, zorder=1, alpha=0.75, lw=0.8)
         ax1.fill_between(
-            xis[index, 0],
-            (xis[index, 2] - xis[index, 4]) * 100.0,
-            (xis[index, 2] + xis[index, 4]) * 100.0,
-            color=colors[n_poly + 1],
+            dat[index, 0],
+            (dat[index, 2] - dat[index, 4]) * 100.0,
+            (dat[index, 2] + dat[index, 4]) * 100.0,
+            color=c,
             zorder=1,
             alpha=0.5,
             lw=0.8,
         )
         ax2.fill_between(
-            xis[index, 0],
-            (xis[index, 3] - xis[index, 5]) * 100.0,
-            (xis[index, 3] + xis[index, 5]) * 100.0,
-            color=colors[n_poly + 1],
+            dat[index, 0],
+            (dat[index, 3] - dat[index, 5]) * 100.0,
+            (dat[index, 3] + dat[index, 5]) * 100.0,
+            color=c,
             zorder=1,
             alpha=0.5,
             lw=0.8,
         )
-        ax1.set_xlim(1.3, 6.7)
-        ax2.set_xlim(1.3, 6.7)
-        ax1.set_ylim(-0.75, 0.75)
-        ax2.set_ylim(-0.35, 0.35)
+        ax1.set_xlim(0.0, 9.2)
+        ax2.set_xlim(0.0, 9.2)
+        ax1.set_ylim(-0.35, 0.35)
+        ax2.set_ylim(-0.95, 0.95)
         ax2.set_xlabel(r"$\Sigma_{nl,||}$")
-        if n_poly == 0:
-            ax1.set_ylabel(r"$\alpha_{||} - 1\,(\%)$")
-            ax2.set_ylabel(r"$\alpha_{\perp} - 1\,(\%)$")
+        if ind == 0:
+            ax1.set_ylabel(r"$\Delta \alpha_{\mathrm{iso}}\,(\%)$")
+            ax2.set_ylabel(r"$\Delta \alpha_{\mathrm{ap}}\,(\%)$")
         else:
             ax1.set_yticklabels([])
             ax2.set_yticklabels([])
         ax1.set_xticklabels([])
         for val, ls in zip([-0.1, 0.0, 0.1], [":", "--", ":"]):
             ax1.axhline(val, color="k", ls=ls, zorder=0, lw=0.8)
+        for val, ls in zip([-0.2, 0.0, 0.2], [":", "--", ":"]):
             ax2.axhline(val, color="k", ls=ls, zorder=0, lw=0.8)
-        ax1.axvline(4.75, color="k", ls=":", zorder=0, lw=0.8)
-        ax2.axvline(4.75, color="k", ls=":", zorder=0, lw=0.8)
+        ax1.axvline(5.0, color="k", ls=":", zorder=0, lw=0.8)
+        ax2.axvline(5.0, color="k", ls=":", zorder=0, lw=0.8)
         ax1.text(
             0.05,
             0.95,
-            r"$\xi(s)\,\mathrm{N_{max}}$ =" + str(n_poly),
+            tracer,
             transform=ax1.transAxes,
             ha="left",
             va="top",
             fontsize=8,
-            color=colors[n_poly + 1],
+            color=c,
         )
 
     fig.savefig(figname, bbox_inches="tight", transparent=True, dpi=300)
@@ -146,8 +169,8 @@ if __name__ == "__main__":
     sampler = NautilusSampler(temp_dir=dir_name)
 
     sigma_nl_perp = 2.0
-    sigma_nl_par = [1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5]
-    sigma_s = 0.0
+    sigma_nl_par = [0.0, 0.5, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0]
+    sigma_s = 2.0
 
     colors = ["#CAF270", "#84D57B", "#4AB482", "#219180", "#1A6E73", "#234B5B", "#232C3B"]
 
@@ -181,27 +204,31 @@ if __name__ == "__main__":
     # Loop over pre- and post-recon measurements
     for sig in range(len(sigma_nl_par)):
 
-        model = PowerBeutler2017(
-            recon=dataset_pk.recon,
-            isotropic=dataset_pk.isotropic,
-            fix_params=["om", "sigma_nl_par", "sigma_nl_perp", "sigma_s"],
-            marg="full",
-            poly_poles=dataset_pk.fit_poles,
-            correction=Correction.HARTLAP,
-        )
-        model.set_default("sigma_nl_par", sigma_nl_par[sig])
-        model.set_default("sigma_nl_perp", sigma_nl_perp)
-        model.set_default("sigma_s", sigma_s)
+        for n, (broadband_type, n_poly) in enumerate(zip(["spline"], [30])):
 
-        # Load in a pre-existing BAO template
-        pktemplate = np.loadtxt("../../barry/data/desi_kp4/DESI_Pk_template.dat")
-        model.kvals, model.pksmooth, model.pkratio = pktemplate.T
+            model = PowerBeutler2017(
+                recon=dataset_pk.recon,
+                isotropic=dataset_pk.isotropic,
+                fix_params=["om", "sigma_nl_par", "sigma_nl_perp", "sigma_s"],
+                marg="full",
+                poly_poles=dataset_pk.fit_poles,
+                correction=Correction.HARTLAP,
+                broadband_type=broadband_type,
+                n_poly=n_poly,
+            )
+            model.set_default("sigma_nl_par", sigma_nl_par[sig])
+            model.set_default("sigma_nl_perp", sigma_nl_perp)
+            model.set_default("sigma_s", sigma_s)
 
-        name = dataset_pk.name + f" mock mean fixed_type {sig}"
-        fitter.add_model_and_dataset(model, dataset_pk, name=name, color=colors[0])
-        allnames.append(name)
+            # Load in a pre-existing BAO template
+            pktemplate = np.loadtxt("../../barry/data/desi_kp4/DESI_Pk_template.dat")
+            model.kvals, model.pksmooth, model.pkratio = pktemplate.T
 
-        for n_poly in [[0], [0, 2], [0, 2, 4], [0, 2, 4, 6]]:
+            name = dataset_pk.name + f" mock mean fixed_type {sig} n_poly=" + str(n)
+            fitter.add_model_and_dataset(model, dataset_pk, name=name, color=colors[n])
+            allnames.append(name)
+
+        for n, (broadband_type, n_poly) in enumerate(zip(["spline"], [[0, 2]])):
 
             model = CorrBeutler2017(
                 recon=dataset_xi.recon,
@@ -209,7 +236,8 @@ if __name__ == "__main__":
                 marg="full",
                 fix_params=["om", "sigma_nl_par", "sigma_nl_perp", "sigma_s"],
                 poly_poles=dataset_xi.fit_poles,
-                correction=Correction.NONE,
+                correction=Correction.HARTLAP,
+                broadband_type=broadband_type,
                 n_poly=n_poly,
             )
             model.set_default("sigma_nl_par", sigma_nl_par[sig])
@@ -220,8 +248,8 @@ if __name__ == "__main__":
             pktemplate = np.loadtxt("../../barry/data/desi_kp4/DESI_Pk_template.dat")
             model.parent.kvals, model.parent.pksmooth, model.parent.pkratio = pktemplate.T
 
-            name = dataset_xi.name + f" mock mean fixed_type {sig} n_poly=" + str(len(n_poly))
-            fitter.add_model_and_dataset(model, dataset_xi, name=name, color=colors[len(n_poly) - 1])
+            name = dataset_xi.name + f" mock mean fixed_type {sig} n_poly=" + str(n)
+            fitter.add_model_and_dataset(model, dataset_xi, name=name, color=colors[n])
             allnames.append(name)
 
     # Submit all the jobs to NERSC. We have quite a few (231), so we'll
@@ -248,8 +276,11 @@ if __name__ == "__main__":
         for posterior, weight, chain, evidence, model, data, extra in fitter.load():
 
             # Get the realisation number and redshift bin
+            poly_bin = int(extra["name"].split("n_poly=")[1].split(" ")[0])
             data_bin = 0 if "Xi" in extra["name"] else 1
             sigma_bin = int(extra["name"].split("fixed_type ")[1].split(" ")[0])
+            if sigma_bin > 17:
+                continue
 
             # Store the chain in a dictionary with parameter names
             df = pd.DataFrame(chain, columns=model.get_labels())
@@ -258,27 +289,38 @@ if __name__ == "__main__":
             alpha_par, alpha_perp = model.get_alphas(df["$\\alpha$"].to_numpy(), df["$\\epsilon$"].to_numpy())
             df["$\\alpha_\\parallel$"] = alpha_par
             df["$\\alpha_\\perp$"] = alpha_perp
+            df["$\\alpha_{ap}$"] = (1.0 + df["$\\epsilon$"].to_numpy()) ** 3
+            newweight = np.where(
+                np.logical_and(
+                    np.logical_and(df["$\\alpha_\\parallel$"] >= 0.8, df["$\\alpha_\\parallel$"] <= 1.2),
+                    np.logical_and(df["$\\alpha_\\perp$"] >= 0.8, df["$\\alpha_\\perp$"] <= 1.2),
+                ),
+                weight,
+                0.0,
+            )
             mean, cov = weighted_avg_and_cov(
                 df[
                     [
+                        "$\\alpha$",
+                        "$\\alpha_{ap}$",
                         "$\\alpha_\\parallel$",
                         "$\\alpha_\\perp$",
                     ]
                 ],
-                weight,
+                newweight,
                 axis=0,
             )
 
             stats[data_bin].append(
-                [sigma_nl_par[sigma_bin], len(model.n_poly), mean[0] - 1.0, mean[1] - 1.0, np.sqrt(cov[0, 0]), np.sqrt(cov[1, 1])]
+                [sigma_nl_par[sigma_bin], poly_bin, mean[0] - 1.0, mean[1] - 1.0, np.sqrt(cov[0, 0]), np.sqrt(cov[1, 1])]
             )
             output[datanames[data_bin]].append(
-                f"{sigma_nl_par[sigma_bin]:6.4f}, {len(model.n_poly):3d}, {mean[0]-1.0:6.4f}, {mean[1]-1.0:6.4f}, {np.sqrt(cov[0, 0]):6.4f}, {np.sqrt(cov[1, 1]):6.4f}"
+                f"{sigma_nl_par[sigma_bin]:6.4f}, {poly_bin:3d}, {mean[0]-1.0:6.4f}, {mean[1]-1.0:6.4f}, {np.sqrt(cov[0, 0]):6.4f}, {np.sqrt(cov[1, 1]):6.4f}"
             )
 
         print(stats)
 
-        truth = {"$\\Omega_m$": 0.3121, "$\\alpha$": 1.0, "$\\epsilon$": 0, "$\\alpha_\\perp$": 1.0, "$\\alpha_\\parallel$": 1.0}
+        truth = {"$\\Omega_m$": 0.3121, "$\\alpha$": 1.0, "$\\alpha_{ap}$": 1.0, "$\\alpha_\\perp$": 1.0, "$\\alpha_\\parallel$": 1.0}
         for data_bin, type in enumerate(["xi", "pk"]):
 
             # Save all the numbers to a file
@@ -290,4 +332,4 @@ if __name__ == "__main__":
                     f.write(l + "\n")
 
         # Plot histograms of the errors and r_off
-        plot_alphas(stats, "/".join(pfn.split("/")[:-1]) + "/alphas.png")
+        plot_alphas_spline(stats, "/".join(pfn.split("/")[:-1]) + "/LRG_mockmean_sigma_par_vs_alpha_splineonly.png")

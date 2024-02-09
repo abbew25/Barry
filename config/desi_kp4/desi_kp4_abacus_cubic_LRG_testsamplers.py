@@ -70,12 +70,13 @@ if __name__ == "__main__":
         fix_params=["om"],
         marg="full",
         poly_poles=dataset_pk.fit_poles,
-        correction=Correction.NONE,
-        n_poly=6,
+        correction=Correction.HARTLAP,
     )
-    model_pk.set_default("sigma_nl_par", 5.1, min=0.0, max=20.0, sigma=2.0, prior="gaussian")
-    model_pk.set_default("sigma_nl_perp", 1.6, min=0.0, max=20.0, sigma=2.0, prior="gaussian")
-    model_pk.set_default("sigma_s", 0.0, min=0.0, max=20.0, sigma=2.0, prior="gaussian")
+    model_pk.set_default(f"b{{{0}}}_{{{1}}}", 2.0, min=0.5, max=9.0)
+    model_pk.set_default("beta", 0.4, min=0.1, max=0.7)
+    model_pk.set_default("sigma_nl_par", 5.0, min=0.0, max=20.0, sigma=2.0, prior="gaussian")
+    model_pk.set_default("sigma_nl_perp", 2.0, min=0.0, max=20.0, sigma=1.0, prior="gaussian")
+    model_pk.set_default("sigma_s", 2.0, min=0.0, max=20.0, sigma=2.0, prior="gaussian")
 
     # Load in a pre-existing BAO template
     pktemplate = np.loadtxt("../../barry/data/desi_kp4/DESI_Pk_template.dat")
@@ -87,12 +88,14 @@ if __name__ == "__main__":
         marg="full",
         fix_params=["om"],
         poly_poles=dataset_xi.fit_poles,
-        correction=Correction.NONE,
-        n_poly=4,
+        correction=Correction.HARTLAP,
+        n_poly=[0, 2],
     )
-    model_xi.set_default("sigma_nl_par", 5.1, min=0.0, max=20.0, sigma=2.0, prior="gaussian")
-    model_xi.set_default("sigma_nl_perp", 1.6, min=0.0, max=20.0, sigma=2.0, prior="gaussian")
-    model_xi.set_default("sigma_s", 0.0, min=0.0, max=20.0, sigma=2.0, prior="gaussian")
+    model_xi.set_default(f"b{{{0}}}_{{{1}}}", 2.0, min=0.5, max=9.0)
+    model_xi.set_default("beta", 0.4, min=0.1, max=0.7)
+    model_xi.set_default("sigma_nl_par", 5.0, min=0.0, max=20.0, sigma=2.0, prior="gaussian")
+    model_xi.set_default("sigma_nl_perp", 2.0, min=0.0, max=20.0, sigma=1.0, prior="gaussian")
+    model_xi.set_default("sigma_s", 2.0, min=0.0, max=20.0, sigma=2.0, prior="gaussian")
 
     # Load in a pre-existing BAO template
     pktemplate = np.loadtxt("../../barry/data/desi_kp4/DESI_Pk_template.dat")
@@ -110,9 +113,10 @@ if __name__ == "__main__":
     fitter.set_num_walkers(1)
 
     # Submit all the jobs
-    sampler_index = 0
-    fitter.set_sampler(samplers[sampler_index])
-    fitter.fit(file)
+    for sampler_bin, (sampler, sampler_name) in enumerate(zip(samplers, sampler_names)):
+        print(sampler_bin, sampler, sampler_name)
+        fitter.set_sampler(samplers[sampler_bin])
+        fitter.fit(file)
 
     # Everything below here is for plotting the chains once they have been run. The should_plot()
     # function will check for the presence of chains and plot if it finds them on your laptop. On the HPC you can
@@ -145,9 +149,25 @@ if __name__ == "__main__":
                 alpha_par, alpha_perp = model.get_alphas(df["$\\alpha$"].to_numpy(), df["$\\epsilon$"].to_numpy())
                 df["$\\alpha_\\parallel$"] = alpha_par
                 df["$\\alpha_\\perp$"] = alpha_perp
-                mean, cov = weighted_avg_and_cov(
-                    df[["$\\alpha_\\parallel$", "$\\alpha_\\perp$", "$\\Sigma_{nl,||}$", "$\\Sigma_{nl,\\perp}$", "$\\Sigma_s$"]],
+                df["$\\alpha_{ap}$"] = (1.0 + df["$\\epsilon$"].to_numpy()) ** 3
+                newweight = np.where(
+                    np.logical_and(
+                        np.logical_and(df["$\\alpha_\\parallel$"] >= 0.8, df["$\\alpha_\\parallel$"] <= 1.2),
+                        np.logical_and(df["$\\alpha_\\perp$"] >= 0.8, df["$\\alpha_\\perp$"] <= 1.2),
+                    ),
                     weight,
+                    0.0,
+                )
+                mean, cov = weighted_avg_and_cov(
+                    df[
+                        [
+                            "$\\alpha$",
+                            "$\\alpha_{ap}$",
+                            "$\\alpha_\\parallel$",
+                            "$\\alpha_\\perp$",
+                        ]
+                    ],
+                    newweight,
                     axis=0,
                 )
 
@@ -170,12 +190,12 @@ if __name__ == "__main__":
                     stats[sampler_bin][data_bin].append(
                         [
                             extra["realisation"],
-                            onesigma["$\\alpha_\\parallel$"][1],
-                            onesigma["$\\alpha_\\perp$"][1],
-                            onesigma["$\\alpha_\\parallel$"][2] - onesigma["$\\alpha_\\parallel$"][0],
-                            onesigma["$\\alpha_\\perp$"][2] - onesigma["$\\alpha_\\perp$"][0],
-                            twosigma["$\\alpha_\\parallel$"][2] - twosigma["$\\alpha_\\parallel$"][0],
-                            twosigma["$\\alpha_\\perp$"][2] - twosigma["$\\alpha_\\perp$"][0],
+                            onesigma["$\\alpha$"][1],
+                            onesigma["$\\alpha_{ap}$"][1],
+                            (onesigma["$\\alpha$"][2] - onesigma["$\\alpha$"][0]) / 2.0,
+                            (onesigma["$\\alpha_{ap}$"][2] - onesigma["$\\alpha_{ap}$"][0]) / 2.0,
+                            (twosigma["$\\alpha$"][2] - twosigma["$\\alpha$"][0]) / 2.0,
+                            (twosigma["$\\alpha_{ap}$"][2] - twosigma["$\\alpha_{ap}$"][0]) / 2.0,
                         ]
                     )
 
@@ -187,13 +207,13 @@ if __name__ == "__main__":
             "$\\Sigma_s$": 0.0,
         }
 
-        c.configure(bins=20, bar_shade=True)
-        c.plotter.plot_summary(
-            filename=["/".join(pfn.split("/")[:-1]) + "/summary.png"],
-            truth=truth,
-            parameters=["$\\alpha_\\parallel$", "$\\alpha_\\perp$", "$\\Sigma_{nl,||}$", "$\\Sigma_{nl,\\perp}$", "$\\Sigma_s$"],
-            extents=[(0.98, 1.02), (0.98, 1.02)],
-        )
+        # c.configure(bins=20, bar_shade=True)
+        # c.plotter.plot_summary(
+        #    filename=["/".join(pfn.split("/")[:-1]) + "/summary.png"],
+        #    truth=truth,
+        #    parameters=["$\\alpha_\\parallel$", "$\\alpha_\\perp$", "$\\Sigma_{nl,||}$", "$\\Sigma_{nl,\\perp}$", "$\\Sigma_s$"],
+        #    extents=[(0.98, 1.02), (0.98, 1.02)],
+        # )
 
         # Plot the summary statistics
         print(stats)
@@ -219,18 +239,18 @@ if __name__ == "__main__":
                     label=label if panel == 3 else None,
                 )
 
-        axes[0, 0].set_ylabel("$\\Delta \\alpha_{\\perp} (\\%)$")
-        axes[1, 0].set_ylabel("$\\Delta \\alpha_{||} (\\%)$")
-        axes[2, 0].set_ylabel("$\\Delta \\sigma^{68\\%}_{\\alpha_{||}} (\\%)$")
-        axes[3, 0].set_ylabel("$\\Delta \\sigma^{68\\%}_{\\alpha_{\\perp}} (\\%)$")
-        axes[4, 0].set_ylabel("$\\Delta \\sigma^{95\\%}_{\\alpha_{||}} (\\%)$")
-        axes[5, 0].set_ylabel("$\\Delta \\sigma^{95\\%}_{\\alpha_{\\perp}} (\\%)$")
-        axes[0, 0].set_ylim(-0.07, 0.07)
-        axes[1, 0].set_ylim(-0.06, 0.06)
-        axes[2, 0].set_ylim(-0.015, 0.015)
-        axes[3, 0].set_ylim(-0.015, 0.015)
-        axes[4, 0].set_ylim(-0.04, 0.04)
-        axes[5, 0].set_ylim(-0.018, 0.018)
+        axes[0, 0].set_ylabel("$\\Delta \\alpha_{\mathrm{iso}} (\\%)$")
+        axes[1, 0].set_ylabel("$\\Delta \\alpha_{\mathrm{ap}} (\\%)$")
+        axes[2, 0].set_ylabel("$\\Delta \\sigma^{68\\%}_{\\alpha_{\mathrm{iso}}} (\\%)$")
+        axes[3, 0].set_ylabel("$\\Delta \\sigma^{68\\%}_{\\alpha_{\mathrm{ap}}} (\\%)$")
+        axes[4, 0].set_ylabel("$\\Delta \\sigma^{95\\%}_{\\alpha_{\mathrm{iso}}} (\\%)$")
+        axes[5, 0].set_ylabel("$\\Delta \\sigma^{95\\%}_{\\alpha_{\mathrm{ap}}} (\\%)$")
+        # axes[0, 0].set_ylim(-0.07, 0.07)
+        # axes[1, 0].set_ylim(-0.06, 0.06)
+        # axes[2, 0].set_ylim(-0.015, 0.015)
+        # axes[3, 0].set_ylim(-0.015, 0.015)
+        # axes[4, 0].set_ylim(-0.04, 0.04)
+        # axes[5, 0].set_ylim(-0.018, 0.018)
         axes[3, 0].legend(
             loc="center right",
             bbox_to_anchor=(1.25, 1.0),
@@ -238,4 +258,72 @@ if __name__ == "__main__":
         )
         plt.setp(axes, xticks=[0, 1, 2, 3], xticklabels=sampler_names[1:])
         plt.xticks(rotation=30)
-        fig.savefig("/".join(pfn.split("/")[:-1]) + "/bias.png", bbox_inches="tight", transparent=True, dpi=300)
+        fig.savefig("/".join(pfn.split("/")[:-1]) + "/DESI_FirstGen_samplers_test.png", bbox_inches="tight", transparent=True, dpi=300)
+
+        print(np.shape(stats[:, 0, :, 1]))
+
+        bplist = []
+        fig, axes = plt.subplots(figsize=(6, 10), nrows=6, ncols=1, sharex=True, squeeze=False)
+        plt.subplots_adjust(left=0.05, top=0.95, bottom=0.05, right=0.95, hspace=0.0, wspace=0.0)
+        for panel in range(6):
+            axes[panel, 0].axhline(0.0, color="k", ls="-", zorder=0, lw=0.75)
+
+            boxprops_pk = {"lw": 1.3, "color": "#1f77b4"}
+            boxprops_xi = {"lw": 1.3, "color": "#ff7f0e"}
+            medianprops = {"lw": 1.5, "color": "r"}
+            whiskerprops = {"lw": 1.3, "color": "k"}
+            bp1 = axes[panel, 0].boxplot(
+                100.0 * (stats[1:, 0, :, panel + 1] - stats[0, 0, :, panel + 1]).T,
+                positions=np.arange(4) - 0.2,
+                widths=0.2,
+                whis=(0, 100),
+                showfliers=False,
+                boxprops=boxprops_pk,
+                whiskerprops=whiskerprops,
+                medianprops=medianprops,
+                capprops=whiskerprops,
+            )
+            bp2 = axes[panel, 0].boxplot(
+                100.0 * (stats[1:, 1, :, panel + 1] - stats[0, 1, :, panel + 1]).T,
+                positions=np.arange(4) + 0.2,
+                widths=0.2,
+                whis=(0, 100),
+                showfliers=False,
+                boxprops=boxprops_xi,
+                whiskerprops=whiskerprops,
+                medianprops=medianprops,
+                capprops=whiskerprops,
+            )
+            if panel == 5:
+                bplist.append(bp1["boxes"][0])
+                bplist.append(bp2["boxes"][0])
+
+        axes[0, 0].set_ylabel("$\\Delta \\alpha_{\mathrm{iso}} (\\%)$", fontsize=16)
+        axes[1, 0].set_ylabel("$\\Delta \\alpha_{\mathrm{ap}} (\\%)$", fontsize=16)
+        axes[2, 0].set_ylabel("$\\Delta \\sigma^{68\\%}_{\\alpha_{\mathrm{iso}}} (\\%)$", fontsize=16)
+        axes[3, 0].set_ylabel("$\\Delta \\sigma^{68\\%}_{\\alpha_{\mathrm{ap}}} (\\%)$", fontsize=16)
+        axes[4, 0].set_ylabel("$\\Delta \\sigma^{95\\%}_{\\alpha_{\mathrm{iso}}} (\\%)$", fontsize=16)
+        axes[5, 0].set_ylabel("$\\Delta \\sigma^{95\\%}_{\\alpha_{\mathrm{ap}}} (\\%)$", fontsize=16)
+        axes[5, 0].set_xlabel("$\mathrm{Sampler}$", fontsize=16)
+        axes[0, 0].axhline(y=-0.1, color="k", ls="--", zorder=0, lw=1.2, alpha=0.75)
+        axes[0, 0].axhline(y=0.1, color="k", ls="--", zorder=0, lw=1.2, alpha=0.75)
+        axes[1, 0].axhline(y=-0.2, color="k", ls="--", zorder=0, lw=1.2, alpha=0.75)
+        axes[1, 0].axhline(y=0.2, color="k", ls="--", zorder=0, lw=1.2, alpha=0.75)
+        # axes[5, 0].axhline(y=0.2, color="k", ls="--", zorder=0, lw=1.2, alpha=0.75)
+        # axes[0, 0].set_ylim(-0.07, 0.07)
+        # axes[1, 0].set_ylim(-0.06, 0.06)
+        # axes[2, 0].set_ylim(-0.015, 0.015)
+        # axes[3, 0].set_ylim(-0.015, 0.015)
+        # axes[4, 0].set_ylim(-0.04, 0.04)
+        # axes[5, 0].set_ylim(-0.018, 0.018)
+        axes[3, 0].legend(
+            bplist,
+            [r"$P(k)$", r"$\xi(s)$"],
+            loc="center right",
+            bbox_to_anchor=(1.25, 1.0),
+            frameon=False,
+            fontsize=14,
+        )
+        plt.setp(axes, xticks=[0, 1, 2, 3], xticklabels=sampler_names[1:])
+        plt.xticks(rotation=30)
+        fig.savefig("/".join(pfn.split("/")[:-1]) + "/DESI_FirstGen_samplers_test2.png", bbox_inches="tight", dpi=300)

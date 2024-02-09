@@ -20,16 +20,21 @@ from chainconsumer import ChainConsumer
 if __name__ == "__main__":
 
     # Get the relative file paths and names
-    pfn, dir_name, file = setup(__file__, "/reduced_cov_fixed_sigma_s/")
+    pfn, dir_name, file = setup(__file__, "/reduced_cov_v3/")
 
     # Set up the Fitting class and Dynesty sampler with 250 live points.
     fitter = Fitter(dir_name, remove_output=False)
     sampler = NautilusSampler(temp_dir=dir_name)
 
-    colors = ["#CAF270", "#84D57B", "#4AB482", "#219180", "#1A6E73", "#234B5B", "#232C3B"]
+    colors = ["#84D57B", "#4AB482", "#219180", "#1A6E73", "#234B5B", "#232C3B", "#CAF270"]
 
-    tracers = {"LRG": [[0.4, 0.6], [0.6, 0.8], [0.8, 1.1]], "ELG_LOP": [[0.8, 1.1], [1.1, 1.6]], "QSO": [[0.8, 2.1]]}
-    reconsmooth = {"LRG": 10, "ELG_LOP": 10, "QSO": 20}
+    tracers = {
+        "LRG": [[0.4, 0.6], [0.6, 0.8], [0.8, 1.1]],
+        "ELG_LOP": [[0.8, 1.1], [1.1, 1.6]],
+        "QSO": [[0.8, 2.1]],
+        "BGS_BRIGHT-21.5": [[0.1, 0.4]],
+    }
+    reconsmooth = {"LRG": 10, "ELG_LOP": 10, "QSO": 30, "BGS_BRIGHT-21.5": 15}
     sigma_nl_par = {
         "LRG": [
             [9.0, 6.0],
@@ -38,6 +43,7 @@ if __name__ == "__main__":
         ],
         "ELG_LOP": [[8.5, 6.0], [8.5, 6.0]],
         "QSO": [[9.0, 6.0]],
+        "BGS_BRIGHT-21.5": [[10.0, 8.0]],
     }
     sigma_nl_perp = {
         "LRG": [
@@ -47,8 +53,14 @@ if __name__ == "__main__":
         ],
         "ELG_LOP": [[4.5, 3.0], [4.5, 3.0]],
         "QSO": [[3.5, 3.0]],
+        "BGS_BRIGHT-21.5": [[6.5, 3.0]],
     }
-    sigma_s = {"LRG": [[2.0, 2.0], [2.0, 2.0], [2.0, 2.0]], "ELG_LOP": [[2.0, 2.0], [2.0, 2.0]], "QSO": [[2.0, 2.0]]}
+    sigma_s = {
+        "LRG": [[2.0, 2.0], [2.0, 2.0], [2.0, 2.0]],
+        "ELG_LOP": [[2.0, 2.0], [2.0, 2.0]],
+        "QSO": [[2.0, 2.0]],
+        "BGS_BRIGHT-21.5": [[2.0, 2.0]],
+    }
 
     allnames = []
     cap = "gccomb"
@@ -71,17 +83,19 @@ if __name__ == "__main__":
                     datafile=name,
                 )
 
-                for n, n_poly in enumerate([[], [-2, -1, 0], [0, 2], [-2, 0, 2]]):
+                for n, (broadband_type, n_poly) in enumerate(zip(["poly", "spline"], [[-2, -1, 0], [0, 2]])):
 
                     model = CorrBeutler2017(
                         recon=dataset_xi.recon,
                         isotropic=dataset_xi.isotropic,
                         marg="full",
-                        fix_params=["om", "sigma_s"],
+                        fix_params=["om"],
                         poly_poles=dataset_xi.fit_poles,
                         correction=Correction.NONE,
+                        broadband_type=broadband_type,
                         n_poly=n_poly,
                     )
+                    model.set_default(f"b{{{0}}}_{{{1}}}", 2.0, min=0.5, max=8.0)
                     model.set_default(
                         "sigma_nl",
                         np.sqrt((sigma_nl_par[t][i][r] ** 2 + 2.0 * sigma_nl_perp[t][i][r] ** 2) / 3.0),
@@ -90,14 +104,14 @@ if __name__ == "__main__":
                         sigma=2.0,
                         prior="gaussian",
                     )
-                    model.set_default("sigma_s", 0.0)
+                    model.set_default("sigma_s", sigma_s[t][i][r], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
 
                     # Load in a pre-existing BAO template
                     pktemplate = np.loadtxt("../../barry/data/desi_kp4/DESI_Pk_template.dat")
                     model.parent.kvals, model.parent.pksmooth, model.parent.pkratio = pktemplate.T
 
                     name = dataset_xi.name + f" mock mean n_poly=" + str(n)
-                    fitter.add_model_and_dataset(model, dataset_xi, name=name, color=colors[i + 1])
+                    fitter.add_model_and_dataset(model, dataset_xi, name=name, color=colors[i])
                     allnames.append(name)
 
     # Submit all the job. We have quite a few (42), so we'll
@@ -131,7 +145,7 @@ if __name__ == "__main__":
 
             # Store the chain in a dictionary with parameter names
             df = pd.DataFrame(chain, columns=model.get_labels())
-            # df["$\\alpha$"] = 100.0 * (df["$\\alpha$"] - 1.0)
+            df["$d\\alpha$"] = 100.0 * (df["$\\alpha$"] - 1.0)
 
             # Get the MAP point and set the model up at this point
             model.set_data(data)
@@ -146,7 +160,7 @@ if __name__ == "__main__":
             plotname = f"{plotnames[data_bin]}_prerecon" if recon_bin == 0 else f"{plotnames[data_bin]}_postrecon"
             figname = "/".join(pfn.split("/")[:-1]) + "/" + plotname + f"_npoly={poly_bin}_bestfit.png"
             new_chi_squared, dof, bband, mods, smooths = model.simple_plot(
-                params_dict, display=False, figname=figname, title=plotname, c=colors[data_bin + 1]
+                params_dict, display=False, figname=figname, title=plotname, c=colors[data_bin]
             )
 
             # Add the chain or MAP to the Chainconsumer plots
@@ -183,5 +197,5 @@ if __name__ == "__main__":
                     print(
                         data_bin,
                         recon_bin,
-                        c[stats_bin].analysis.get_latex_table(parameters=["$\\alpha$"]),
+                        c[stats_bin].analysis.get_latex_table(parameters=["$d\\alpha$"]),
                     )
