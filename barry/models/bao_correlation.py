@@ -58,7 +58,6 @@ class CorrelationFunctionFit(Model):
             correction=correction,
             isotropic=isotropic,
             marg=marg,
-            n_poly=n_poly,
             vary_neff=vary_neff,
             vary_phase_shift_neff=vary_phase_shift_neff,
             use_classorcamb=use_classorcamb,
