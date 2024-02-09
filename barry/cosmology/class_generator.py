@@ -153,9 +153,10 @@ class CLASSGenerator(object):
             "h0": h0,
             "r_s": data[0],
             "ks": self.ks,
-            "pk_lin": data[1 : 1 + self.k_num],
-            "pk_nl_0": data[1 + 1 * self.k_num : 1 + 2 * self.k_num],
-            "pk_nl_z": data[1 + 2 * self.k_num :],
+            "pk_lin_0": data[1 : 1 + self.k_num],
+            "pk_lin_z": data[1 + self.k_num : 1 + 2 * self.k_num],
+            "pk_nl_0": data[1 + 2 * self.k_num : 1 + 3 * self.k_num],
+            "pk_nl_z": data[1 + 3 * self.k_num :],
         }
 
     def _generate_data(self, savedata=True): # this function loops through the arrays on values for om, h0, neff etc. that we want to vary and saves the power spectra for each cosmology to an array - gets cosmo at z = 0 and 1 specified redshift 
@@ -170,9 +171,9 @@ class CLASSGenerator(object):
         neutrino_mass_input = str(self.mnu) # just letting 1 massive neutrino - mass hierarchy/number doesn't have too much effect on cosmological constraints..
         self.logger.info("Initiated CLASS object.")
 
-        data = np.zeros((self.om_resolution, self.h0_resolution, 1 + 3 * self.k_num))
+        data = np.zeros((self.om_resolution, self.h0_resolution, 1 + 4 * self.k_num))
         if self.vary_neff: 
-            data = np.zeros((self.om_resolution, self.h0_resolution, self.neff_resolution, 1 + 3 * self.k_num))
+            data = np.zeros((self.om_resolution, self.h0_resolution, self.neff_resolution, 1 + 4 * self.k_num))
             
         for i, omch2 in enumerate(self.omch2s):
             for j, h0 in enumerate(self.h0s):
@@ -197,12 +198,13 @@ class CLASSGenerator(object):
                         M.set({"output": "mPk", "P_k_max_1/Mpc": self.k_max, "z_max_pk": self.redshift})
                         ks_fid = np.logspace(np.log(self.k_min * h0), np.log(self.k_max * h0), self.k_num, base=np.e) # ks in 1/ MPC unit
                         M.compute()
-                        data[i, j, k, 1 : 1 + self.k_num] = np.array([M.pk_lin(ki, self.redshift)*(h0 * h0 * h0) for ki in ks_fid]) 
+                        data[i, j, k, 1 : 1 + self.k_num] = np.array([M.pk_lin(ki, 0.0)*(h0 * h0 * h0) for ki in ks_fid]) 
+                        data[i, j, k, 1 + self.k_num : 1 + 2 * self.k_num] = np.array([M.pk_lin(ki, self.redshift)*(h0 * h0 * h0) for ki in ks_fid])
                     
                         M.set({"output": "mPk", "P_k_max_1/Mpc": self.k_max, "z_max_pk": self.redshift, 'non linear': 'Halofit'})
                         M.compute()
-                        data[i, j, k, 1 + self.k_num : 1 + 2*self.k_num] = np.array([M.pk(ki, 0.0)*(h0 * h0 * h0) for ki in ks_fid]) 
-                        data[i, j, k, 1 + 2*self.k_num :] = np.array([M.pk(ki, self.redshift)*(h0 * h0 * h0) for ki in ks_fid]) 
+                        data[i, j, k, 1 + 2 * self.k_num : 1 + 3*self.k_num] = np.array([M.pk(ki, 0.0)*(h0 * h0 * h0) for ki in ks_fid]) 
+                        data[i, j, k, 1 + 3 *self.k_num :] = np.array([M.pk(ki, self.redshift)*(h0 * h0 * h0) for ki in ks_fid]) 
             
                         data[i, j, k, 0] = M.rs_drag() * h0
                 
@@ -228,12 +230,13 @@ class CLASSGenerator(object):
                     M.set({"output": "mPk", "P_k_max_1/Mpc": self.k_max, "z_max_pk": self.redshift})
                     ks_fid = np.logspace(np.log(self.k_min * h0), np.log(self.k_max * h0), self.k_num, base=np.e) # ks in 1/ MPC unit
                     M.compute()
-                    data[i, j, 1 : 1 + self.k_num] = np.array([M.pk_lin(ki, self.redshift)*(h0 * h0 * h0) for ki in ks_fid]) 
+                    data[i, j, k, 1 : 1 + self.k_num] = np.array([M.pk_lin(ki, 0.0)*(h0 * h0 * h0) for ki in ks_fid])
+                    data[i, j, 1 + self.k_num : 1 + 2 * self.k_num] = np.array([M.pk_lin(ki, self.redshift)*(h0 * h0 * h0) for ki in ks_fid]) 
 
                     M.set({"output": "mPk", "P_k_max_1/Mpc": self.k_max, "z_max_pk": self.redshift, 'non linear': 'Halofit'})
                     M.compute()
-                    data[i, j, 1 + self.k_num : 1 + 2*self.k_num] = np.array([M.pk(ki, 0.0)*(h0 * h0 * h0) for ki in ks_fid]) 
-                    data[i, j, 1 + 2*self.k_num :] = np.array([M.pk(ki, self.redshift)*(h0 * h0 * h0) for ki in ks_fid]) 
+                    data[i, j, 1 + 2 * self.k_num : 1 + 3*self.k_num] = np.array([M.pk(ki, 0.0)*(h0 * h0 * h0) for ki in ks_fid]) 
+                    data[i, j, 1 + 3*self.k_num :] = np.array([M.pk(ki, self.redshift)*(h0 * h0 * h0) for ki in ks_fid]) 
 
                     data[i, j, 0] = M.rs_drag() * h0
                     

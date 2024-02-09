@@ -572,7 +572,7 @@ class Model(ABC):
                 om=c["om"],
                 h0=c["h0"],
                 ks=c["ks"],
-                pk_lin=c["pk_lin"],
+                pk_lin=c["pk_lin_z"],
                 pk_nonlin_0=c["pk_nl_0"],
                 pk_nonlin_z=c["pk_nl_z"],
                 r_drag=c["r_s"],
@@ -662,6 +662,14 @@ class Model(ABC):
         if not np.isfinite(prior):
             return -np.inf
         posterior = prior
+        for d in self.data:
+            posterior += self.get_likelihood(ps, d)
+        return posterior
+
+    def get_posterior_noprior(self, params):
+        """Returns the posterior given a list of param values."""
+        ps = self.get_param_dict(params)
+        posterior = 0.0
         for d in self.data:
             posterior += self.get_likelihood(ps, d)
         return posterior

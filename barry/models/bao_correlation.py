@@ -1,12 +1,13 @@
 from functools import lru_cache
 import numpy as np
 
-from barry.cosmology.pk2xi import PowerToCorrelationFFTLog, PowerToCorrelationGauss, PowerToCorrelationSphericalBessel
-from barry.cosmology.power_spectrum_smoothing import validate_smooth_method, smooth_func
-from barry.models.model import Model, Omega_m_z, Correction
+from barry.cosmology.pk2xi import PowerToCorrelationSphericalBessel
+from barry.cosmology.power_spectrum_smoothing import validate_smooth_method
+from barry.models.model import Model, Omega_m_z
 from barry.models.bao_power import PowerSpectrumFit
 from scipy.interpolate import splev, splrep
 from scipy.integrate import simps
+from scipy.special import sici
 
 from barry.utils import break_vector_and_get_blocks
 
@@ -26,11 +27,13 @@ class CorrelationFunctionFit(Model):
         poly_poles=(0, 2),
         marg=None,
         includeb2=False,
-        n_poly=(0,2),
         vary_neff=False,
         vary_phase_shift_neff=False,
         use_classorcamb='CAMB',
-        ):
+        include_binmat=True,
+        broadband_type="spline",
+        **kwargs,
+    ):
 
         """Generic correlation function model
 
@@ -61,25 +64,36 @@ class CorrelationFunctionFit(Model):
             use_classorcamb=use_classorcamb,
             broadband_type=None,
         )
-        if smooth_type is None:
-            smooth_type = {"method": "hinton2017"}
-        self.smooth_type = smooth_type
-        if not validate_smooth_method(self.smooth_type):
+
+        if not validate_smooth_method(self.parent.smooth_type):
             exit(0)
 
         self.n_data_bias = 1
         self.n_data_poly = 1
 
-        if len(n_poly) > 0 and self.isotropic:
+        self.broadband_type = None if broadband_type is None else broadband_type.lower()
+        if self.broadband_type not in [None, "poly", "spline"]:
+            raise ValueError("broadband_type not recognised, must be None, 'poly' or 'spline'")
+
+        self.n_poly = [] if self.broadband_type is None else kwargs.get("n_poly", [0, 2])
+        if self.broadband_type == "spline":
+            self.delta_fac = kwargs.get("delta", 2.0)
+            self.logger.info(f"Including low order splines in broadband with delta={self.delta_fac}*pi/r_s")
+
+        if (len(self.n_poly) > 0 or self.broadband_type == "spline") and self.isotropic:
             poly_poles = [0]
 
         self.recon = recon
-        self.n_poly = n_poly
         self.poly_poles = poly_poles
         self.data_share_poly = True
 
+        nspline = 2 if 2 in self.poly_poles and self.broadband_type == "spline" else 0
+        self.len_poly = len(self.n_poly) * len(self.poly_poles) + nspline
+
         self.includeb2 = includeb2
         self.declare_parameters()
+
+        self.include_binmat = include_binmat
 
         # Set up data structures for model fitting
         self.smooth = smooth
@@ -95,7 +109,7 @@ class CorrelationFunctionFit(Model):
         self.poly = None  # Basic polynomial terms
         self.winpoly = None  # Polynomial terms convolved with the window function
 
-    def set_marg(self, fix_params, poly_poles, n_poly, do_bias=False, marg_bias=0):
+    def set_marg(self, fix_params, do_bias=False, marg_bias=0):
 
         self.marg_bias = marg_bias
 
@@ -109,8 +123,11 @@ class CorrelationFunctionFit(Model):
                         if pole != 0:
                             fix_params.extend([f"b{{{pole}}}_{{{i+1}}}"])
             for i in range(self.n_data_poly):
-                for pole in poly_poles:
-                    for ip in n_poly:
+                if self.broadband_type == "spline" and 2 in self.poly_poles:
+                    fix_params.extend([f"bbspline_{{{0}}}_{{{1}}}"])
+                    fix_params.extend([f"bbspline_{{{1}}}_{{{1}}}"])
+                for pole in self.poly_poles:
+                    for ip in self.n_poly:
                         fix_params.extend([f"a{{{pole}}}_{{{ip}}}_{{{i+1}}}"])
 
         self.set_fix_params(fix_params)
@@ -124,8 +141,11 @@ class CorrelationFunctionFit(Model):
                             if pole != 0:
                                 self.set_default(f"b{{{pole}}}_{{{i+1}}}", 1.0)
             for i in range(self.n_data_poly):
+                if self.broadband_type == "spline" and 2 in self.poly_poles:
+                    self.set_default(f"bbspline_{{{0}}}_{{{1}}}", 0.0)
+                    self.set_default(f"bbspline_{{{1}}}_{{{1}}}", 0.0)
                 for pole in self.poly_poles:
-                    for ip in n_poly:
+                    for ip in self.n_poly:
                         self.set_default(f"a{{{pole}}}_{{{ip}}}_{{{i+1}}}", 0.0)
                         
     def fitting_func_ps(self, kvals, phi_inf=0.227, kstar=0.0324, epsilon=0.872):
@@ -177,8 +197,11 @@ class CorrelationFunctionFit(Model):
         self.pk2xi_4 = PowerToCorrelationSphericalBessel(qs=cambpk["ks"], ell=4)
         self.set_bias(data[0])
         self.parent.set_data(data, parent=True)
+        if self.broadband_type == "spline":
+            self.delta = self.delta_fac * np.pi / self.camb.get_data(om=data[0]["cosmology"]["om"], h0=data[0]["cosmology"]["h0"])["r_s"]
+            self.logger.info(f"Broadband Delta fixed to {self.delta}")
 
-    def set_bias(self, data, sval=50.0, width=0.3):
+    def set_bias(self, data, sval=50.0, width=0.5):
         """Sets the bias default value by comparing the data monopole and linear model
 
         Parameters
@@ -192,40 +215,50 @@ class CorrelationFunctionFit(Model):
 
         c = data["cosmology"]
         dataxi = splev(sval, splrep(data["dist"], data["xi0"]))
+
         Neff=3.044
         if "Neff" in c:
             Neff=c["Neff"]
         cambpk = self.camb.get_data(om=c["om"], h0=c["h0"], Neff = Neff)
-        modelxi = self.pk2xi_0.__call__(cambpk["ks"], cambpk["pk_lin"], np.array([sval]))[0]
+        modelxi = self.pk2xi_0.__call__(cambpk["ks"], cambpk["pk_lin_z"], np.array([sval]))[0]
+
         kaiserfac = dataxi / modelxi
         f = self.param_dict.get("f") if self.param_dict.get("f") is not None else Omega_m_z(c["om"], c["z"]) ** 0.55
         b = -1.0 / 3.0 * f + np.sqrt(kaiserfac - 4.0 / 45.0 * f**2) if kaiserfac - 4.0 / 45.0 * f**2 > 0 else 1.0
-        if not self.marg:
-            min_b, max_b = (1.0 - width) * b, (1.0 + width) * b
-            self.set_default(f"b{{{0}}}_{{{1}}}", b**2, min=min_b**2, max=max_b**2)
-            self.logger.info(f"Setting default bias to b0={b:0.5f} with {width:0.5f} fractional width")
-            if self.includeb2:
-                for pole in self.poly_poles:
-                    self.set_default(f"b{{{pole}}}_{{{1}}}", b**2, min=min_b**2, max=max_b**2)
-                    self.logger.info(f"Setting default bias to b{{{pole}}}={b:0.5f} with {width:0.5f} fractional width")
+        if not self.marg_bias:
+            if self.get_default(f"b{{{0}}}_{{{1}}}") is None:
+                min_b, max_b = (1.0 - width) * b, (1.0 + width) * b
+                self.set_default(f"b{{{0}}}_{{{1}}}", b**2, min=min_b**2, max=max_b**2)
+                self.logger.info(f"Setting default bias to b0={b:0.5f} with {width:0.5f} fractional width")
+                if self.includeb2:
+                    for pole in self.poly_poles:
+                        self.set_default(f"b{{{pole}}}_{{{1}}}", b**2, min=min_b**2, max=max_b**2)
+                        self.logger.info(f"Setting default bias to b{{{pole}}}={b:0.5f} with {width:0.5f} fractional width")
+            else:
+                self.logger.info(f"Using default bias parameter of b0={self.get_default(f'b{{{0}}}_{{{1}}}'):0.5f}")
         if self.param_dict.get("beta") is not None:
             if self.get_default("beta") is None:
                 beta, beta_min, beta_max = f / b, (1.0 - width) * f / b, (1.0 + width) * f / b
                 self.set_default("beta", beta, beta_min, beta_max)
                 self.logger.info(f"Setting default RSD parameter to beta={beta:0.5f} with {width:0.5f} fractional width")
             else:
-                beta = self.get_default("beta")
-                self.logger.info(f"Using default RSD parameter of beta={beta:0.5f}")
+                self.logger.info(f"Using default RSD parameter of beta={self.get_default('beta'):0.5f}")
 
     def declare_parameters(self):
         """Defines model parameters, their bounds and default value."""
-        self.add_param(f"b{{{0}}}_{{{1}}}", f"$b{{{0}}}_{{{1}}}$", 0.01, 10.0, 1.0)  # Linear galaxy bias for each multipole
+        self.add_param(f"b{{{0}}}_{{{1}}}", f"$b_{{{0},{1}}}$", 0.01, 10.0, 1.0)  # Linear galaxy bias for each multipole
         self.add_param("om", r"$\Omega_m$", 0.1, 0.5, 0.31)  # Cosmology
         self.add_param("Neff", r"$N_{\mathrm{eff}}$", 0.0, 5.0, 3.044)  # Cosmology 
         self.add_param("alpha", r"$\alpha$", 0.8, 1.2, 1.0)  # Stretch for monopole
         self.add_param("beta_phase_shift", r"$\beta_{\phi(N_{\mathrm{eff}})}$", -1.0, 3.0, 1.0) # phase shift parameter due to Neff 
         if not self.isotropic:
             self.add_param("epsilon", r"$\epsilon$", -0.2, 0.2, 0.0)  # Stretch for multipoles
+        for pole in self.poly_poles:
+            for ip in self.n_poly:
+                self.add_param(f"a{{{pole}}}_{{{ip}}}_{{{1}}}", f"$a_{{{pole},{ip},1}}$", -10.0, 10.0, 0)
+        if self.broadband_type == "spline" and 2 in self.poly_poles:
+            self.add_param(f"bbspline_{{{0}}}_{{{1}}}", f"$bbspline_{{0,1}}$", -10.0, 10.0, 0)
+            self.add_param(f"bbspline_{{{1}}}_{{{1}}}", f"$bbspline_{{1,1}}$", -10.0, 10.0, 0)
 
     @lru_cache(maxsize=32)
     def get_sprimefac(self, epsilon):
@@ -431,16 +464,61 @@ class CorrelationFunctionFit(Model):
         """
         # Prefactor, roughly equal to the typical k_min/2pi, set so that the free coefficients are all of the same order
         A = 0.02 / (2.0 * np.pi)
+
         if self.isotropic:
-            self.poly = np.zeros((len(self.n_poly), 1, len(dist)))
+            self.poly = np.zeros((self.len_poly, 1, len(dist)))
             for i, ip in enumerate(self.n_poly):
                 self.poly[i, :, :] = (A * dist) ** ip
         else:
-            self.poly = np.zeros((len(self.n_poly) * len(self.poly_poles), 3, len(dist)))
+            nspline = 2 if self.broadband_type == "spline" else 0
+            self.poly = np.zeros((self.len_poly, 3, len(dist)))
             polyvec = [(A * dist) ** ip for ip in self.n_poly]
             if len(self.n_poly) > 0:
                 for i, pole in enumerate(self.poly_poles):
                     self.poly[len(self.n_poly) * i : len(self.n_poly) * (i + 1), int(pole / 2)] = polyvec
+
+            # Add on the spline broadband terms (B2m1 and B20) for the quadrupole if requested.
+            # TODO: Should also compute and code up relevant B4 terms in the event we fit the hexadecapole?
+            if self.broadband_type == "spline":
+                x = self.delta * dist
+                sinx, sin2x, sin3x = np.sin(x), np.sin(2.0 * x), np.sin(3.0 * x)
+                cosx, cos2x, cos3x = np.cos(x), np.cos(2.0 * x), np.cos(3.0 * x)
+                Si_x, Si_2x, Si_3x = sici(x)[0], sici(2.0 * x)[0], sici(3.0 * x)[0]
+                self.poly[-2, 1] = self.delta**3 * (
+                    -2.0
+                    * (
+                        12.0
+                        - 16.0 * cosx
+                        + x**2 * cosx
+                        + 4.0 * cos2x
+                        - x**2 * cos2x
+                        - x * sinx
+                        + x * cosx * sinx
+                        + x**3 * Si_x
+                        - 2.0 * x**3 * Si_2x
+                    )
+                    / x**6
+                )
+                self.poly[-1, 1] = self.delta**3 * (
+                    0.5
+                    * (
+                        48.0
+                        + 8.0 * x**2
+                        - 96.0 * cosx
+                        + 6.0 * x**2 * cosx
+                        + 64.0 * cos2x
+                        - 16.0 * x**2 * cos2x
+                        - 16.0 * cos3x
+                        + 9.0 * x**2 * cos3x
+                        - 6.0 * x * sinx
+                        + 8.0 * x * sin2x
+                        - 3.0 * x * sin3x
+                        + 6.0 * x**3 * Si_x
+                        - 32.0 * x**3 * Si_2x
+                        + 27.0 * x**3 * Si_3x
+                    )
+                    / x**3
+                )
 
     def get_model(self, p, d, smooth=False):
         """Gets the model prediction using the data passed in and parameter location specified
@@ -464,18 +542,21 @@ class CorrelationFunctionFit(Model):
             k values correspond to d['dist']
         """
 
-        dist, xis = self.compute_correlation_function(d["dist_input"], p, smooth=smooth)
+        dist, xis = self.compute_correlation_function(d["dist_input"] if self.include_binmat else d["dist"], p, smooth=smooth)
 
         # If we are not analytically marginalising, we now add the polynomial terms on to the correlation function
         if not self.marg:
             if self.poly is None:
-                self.compute_poly(d["dist_input"])
+                self.compute_poly(d["dist_input"] if self.include_binmat else d["dist"])
             for pole in self.poly_poles:
                 for i, ip in enumerate(self.n_poly):
                     xis[int(pole / 2)] += p[f"a{{{pole}}}_{{{ip}}}_{{{1}}}"] * self.poly[i, int(pole / 2), :]
+            if self.broadband_type == "spline":
+                xis[1] += p[f"bbspline_{{{0}}}_{{{1}}}"] * self.poly[-2, 1, :]
+                xis[1] += p[f"bbspline_{{{1}}}_{{{1}}}"] * self.poly[-1, 1, :]
 
         # Convolve the xi model with the binning matrix and concatenate into a single data vector
-        xi_generated = [xi @ d["binmat"] for xi in xis]
+        xi_generated = [xi @ d["binmat"] if self.include_binmat else xi for xi in xis]
         if self.isotropic:
             xi_model = xi_generated[0]
         else:
@@ -488,13 +569,13 @@ class CorrelationFunctionFit(Model):
             # Load the polynomial terms if computed already, or compute them for the first time.
             if self.winpoly is None:
                 if self.poly is None:
-                    self.compute_poly(d["dist_input"])
+                    self.compute_poly(d["dist_input"] if self.include_binmat else d["dist"])
 
                 nmarg, nell = np.shape(self.poly)[:2]
                 len_poly = len(d["dist"]) if self.isotropic else len(d["dist"]) * nell
                 self.winpoly = np.zeros((nmarg, len_poly))
                 for n in range(nmarg):
-                    self.winpoly[n] = np.concatenate([pol @ d["binmat"] for ip, pol in enumerate(self.poly[n])])
+                    self.winpoly[n] = np.concatenate([pol @ d["binmat"] if self.include_binmat else pol for pol in self.poly[n]])
 
             if self.marg_bias > 0:
                 # We need to update/include the poly terms corresponding to the galaxy bias
@@ -566,7 +647,7 @@ class CorrelationFunctionFit(Model):
                 num_data=num_data,
             )
 
-    def get_model_summary(self, params, smooth_params=None):
+    def get_model_summary(self, params, smooth_params=None, verbose=False):
 
         ss = self.data[0]["dist"]
         mod, polymod = self.get_model(params, self.data[0])
@@ -597,7 +678,8 @@ class CorrelationFunctionFit(Model):
             mod = mod + bband @ polymod
             mod_fit = mod_fit + bband @ polymod_fit
 
-            print(f"Maximum likelihood nuisance parameters at maximum a posteriori point are {bband}")
+            if verbose:
+                print(f"Maximum likelihood nuisance parameters at maximum a posteriori point are {bband}")
             new_chi_squared = -2.0 * self.get_chi2_likelihood(
                 self.data[0]["xi"],
                 mod_fit,
@@ -606,7 +688,8 @@ class CorrelationFunctionFit(Model):
                 num_data=len(self.data[0]["xi"]),
             )
             dof = len(self.data[0]["xi"]) - len(self.get_active_params()) - len(bband)
-            print(f"Chi squared/dof is {new_chi_squared}/{dof} at these values")
+            if verbose:
+                print(f"Chi squared/dof is {new_chi_squared}/{dof} at these values")
 
             bband_smooth = self.get_ML_nuisance(
                 self.data[0]["xi"],
@@ -733,11 +816,29 @@ class CorrelationFunctionFit(Model):
                 axes[0, 0].plot(ss, ss**2 * mod, c=c, label="Model")
                 axes[0, 0].plot(ss, ss**2 * smooth, c=c, ls="--", label="Smooth")
 
+            axes[0, 0].set_xlabel("$s\,(h^{-1}\,\mathrm{Mpc})$")
             axes[0, 0].set_ylabel("$s^{2} \\times \\xi(s)$ ")
 
             # Add the chi_squared and dof
             string = f"$\\chi^{2}/$dof$=${new_chi_squared:.1f}$/${dof:d}\n"
             axes[0, 0].text(0.02, 0.98, string, horizontalalignment="left", verticalalignment="top", transform=axes[0, 0].transAxes)
+            axes[0, 0].text(
+                0.98,
+                0.98,
+                f"$\\alpha$=${params['alpha']:.4f}$\n",
+                horizontalalignment="right",
+                verticalalignment="top",
+                transform=axes[0, 0].transAxes,
+            )
+            if not self.isotropic:
+                axes[0, 0].text(
+                    0.98,
+                    0.94,
+                    f"$\\alpha_{{{{ap}}}}$=${(1.0 + params['epsilon']) ** 3:.4f}$\n",
+                    horizontalalignment="right",
+                    verticalalignment="top",
+                    transform=axes[0, 0].transAxes,
+                )
 
             if title is None:
                 title = self.data[0]["name"] + " + " + self.get_name()

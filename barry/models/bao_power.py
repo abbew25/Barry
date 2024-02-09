@@ -190,7 +190,7 @@ class PowerSpectrumFit(Model):
                 self.logger.info(f"Broadband Delta fixed to {self.delta}")
             self.compute_poly(data[0]["ks_input"])
 
-    def set_bias(self, data, kval=0.2, width=0.4):
+    def set_bias(self, data, kval=0.2, width=0.5):
         """Sets the bias default value by comparing the data monopole and linear pk
 
         Parameters
@@ -210,18 +210,23 @@ class PowerSpectrumFit(Model):
         c = data["cosmology"]
         for i in range(self.n_data_bias):
             datapk = splev(kval, splrep(data["ks"], data["pk0"][i]))
+
             Neff=3.044
             if "Neff" in c:
                 Neff=c["Neff"]
             cambpk = self.camb.get_data(om=c["om"], h0=c["h0"],Neff=Neff)
-            modelpk = splev(kval, splrep(cambpk["ks"], cambpk["pk_lin"]))
+            modelpk = splev(kval, splrep(cambpk["ks"], cambpk["pk_lin_z"]))
+
             kaiserfac = datapk / modelpk
             f = self.get_default("f") if self.param_dict.get("f") is not None else Omega_m_z(c["om"], c["z"]) ** 0.55
             b = -1.0 / 3.0 * f + np.sqrt(kaiserfac - 4.0 / 45.0 * f**2)
-            if not self.marg:
-                min_b, max_b = (1.0 - width) * b, (1.0 + width) * b
-                self.set_default(f"b{{{0}}}_{{{i+1}}}", b**2, min_b**2, max_b**2)
-                self.logger.info(f"Setting default bias to b{{{0}}}_{{{i+1}}}={b:0.5f} with {width:0.5f} fractional width")
+            if not self.marg_bias:
+                if self.get_default(f"b{{{0}}}_{{{i+1}}}") is None:
+                    min_b, max_b = (1.0 - width) * b, (1.0 + width) * b
+                    self.set_default(f"b{{{0}}}_{{{i+1}}}", b**2, min_b**2, max_b**2)
+                    self.logger.info(f"Setting default bias to b{{{0}}}_{{{i+1}}}={b:0.5f} with {width:0.5f} fractional width")
+                else:
+                    self.logger.info(f"Using default bias parameter of b0={self.get_default(f'b{{{0}}}_{{{i+1}}}'):0.5f}")
         if self.param_dict.get("beta") is not None:
             if self.get_default("beta") is None:
                 beta, beta_min, beta_max = f / b, (1.0 - width) * f / b, (1.0 + width) * f / b
@@ -265,16 +270,15 @@ class PowerSpectrumFit(Model):
 
         pk_smooth_lin = smooth_func(
             self.camb.ks,
-            res["pk_lin"],
+            res["pk_lin_z"],
             om=om,
             h0=self.camb.h0,
             ob=self.camb.omega_b,
             ns=self.camb.ns,
-            rs=res["r_s"],
             Neff=Neff,
-            **self.smooth_type,
+            mnu=self.camb.mnu,
         )  # Get the smoothed power spectrum
-        pk_ratio = res["pk_lin"] / pk_smooth_lin - 1.0  # Get the ratio
+        pk_ratio = res["pk_lin_z"] / pk_smooth_lin - 1.0  # Get the ratio
         return pk_smooth_lin, pk_ratio
 
     @lru_cache(maxsize=32)
@@ -451,15 +455,15 @@ class PowerSpectrumFit(Model):
 
         if self.broadband_type == "poly":
 
-            polyvec = [(10.0 * k) ** ip for ip in self.n_poly]
             if self.isotropic:
-                self.poly = polyvec
+                self.poly = np.zeros((len(self.n_poly), 1, len(k)))
+                for i, ip in enumerate(self.n_poly):
+                    self.poly[i, :, :] = (10.0 * k) ** ip
             else:
                 self.poly = np.zeros((len(self.n_poly) * len(self.poly_poles), 6, len(k)))
+                polyvec = [(10.0 * k) ** ip for ip in self.n_poly]
                 for i, pole in enumerate(self.poly_poles):
                     self.poly[len(self.n_poly) * i : len(self.n_poly) * (i + 1), pole] = polyvec
-
-            return polyvec
 
         else:
             # W3 is the Piecewise Cubic Spline (fourth-order) interpolation function
@@ -470,8 +474,6 @@ class PowerSpectrumFit(Model):
             self.poly = np.zeros((len(self.n_poly) * len(self.poly_poles), 6, len(k)))
             for i, pole in enumerate(self.poly_poles):
                 self.poly[len(self.n_poly) * i : len(self.n_poly) * (i + 1), pole] = W3
-
-            return W3
 
     def adjust_model_window_effects(self, pk_generated, data, window=True, wide_angle=True):
         """Take the window effects into account.
@@ -721,7 +723,9 @@ class PowerSpectrumFit(Model):
                         poly_generated = np.concatenate([poly[n, l, :] for l in d["poles"][d["poles"] % 2 == 0]])
 
                     if self.isotropic:
-                        poly_model_long = self.adjust_model_window_effects(poly_generated, d, window=window)
+                        poly_model_long = self.adjust_model_window_effects(
+                            poly_generated, d, window=window if self.broadband_type == "poly" else False
+                        )
                         if self.postprocess is not None:
                             poly_model_long = self.postprocess(ks=d["ks_output"], pk=poly_model_long, mask=mask)
                         self.winpoly[n] = poly_model_long
@@ -731,8 +735,12 @@ class PowerSpectrumFit(Model):
                         poly_generated_odd[1 * nk : 2 * nk] += poly[n, 1]
                         poly_generated_odd[3 * nk : 4 * nk] += poly[n, 3]
                         poly_generated_odd[5 * nk : 6 * nk] += poly[n, 5]
-                        self.winpoly[n] = self.adjust_model_window_effects(poly_generated, d, window=window)
-                        self.winpoly[n] += self.adjust_model_window_effects(poly_generated_odd, d, window=window, wide_angle=False)
+                        self.winpoly[n] = self.adjust_model_window_effects(
+                            poly_generated, d, window=window if self.broadband_type == "poly" else False
+                        )
+                        self.winpoly[n] += self.adjust_model_window_effects(
+                            poly_generated_odd, d, window=window if self.broadband_type == "poly" else False, wide_angle=False
+                        )
                 if self.broadband_type == "spline":
                     self.winpoly = np.where(self.winpoly > 1.0e-10, self.winpoly, 0.0)
 
@@ -745,14 +753,14 @@ class PowerSpectrumFit(Model):
 
         return pk_model, poly_model, mask
 
-    def get_model_summary(self, params, window=True, smooth_params=None):
+    def get_model_summary(self, params, window=True, smooth_params=None, masked=True, verbose=False):
         """Get the model summary for the given parameters.
 
         Parameters
         ----------
-        params : array
+        params : dict
             The parameter vector.
-        smooth_params : array, optional
+        smooth_params : dict, optional
             The parameter vector for the smooth model.
 
         Returns
@@ -789,7 +797,8 @@ class PowerSpectrumFit(Model):
             mod = mod + bband_all @ polymod
             mod_fit = mod_fit + bband @ polymod_fit
 
-            print(f"Maximum likelihood nuisance parameters at maximum a posteriori point are {bband}")
+            if verbose:
+                print(f"Maximum likelihood nuisance parameters at maximum a posteriori point are {bband}")
             new_chi_squared = -2.0 * self.get_chi2_likelihood(
                 self.data[0]["pk"],
                 mod_fit,
@@ -798,7 +807,8 @@ class PowerSpectrumFit(Model):
                 num_data=len(self.data[0]["pk"]),
             )
             dof = len(self.data[0]["pk"]) - len(self.get_active_params()) - len(bband)
-            print(f"Chi squared/dof is {new_chi_squared}/{dof} at these values")
+            if verbose:
+                print(f"Chi squared/dof is {new_chi_squared}/{dof} at these values")
 
             bband_smooth = self.get_ML_nuisance(
                 self.data[0]["pk"],
@@ -820,11 +830,17 @@ class PowerSpectrumFit(Model):
             bband = None
 
         # Mask the model to match the data points
-        mod = mod[self.data[0]["w_mask"]]
-        smooth = smooth[self.data[0]["w_mask"]]
+        if masked:
+            mod = mod[self.data[0]["w_mask"]]
+            smooth = smooth[self.data[0]["w_mask"]]
 
-        mods = mod.reshape((-1, self.data[0]["ndata"], len(self.data[0]["ks"])))
-        smooths = smooth.reshape((-1, self.data[0]["ndata"], len(self.data[0]["ks"])))
+            mods = mod.reshape((-1, self.data[0]["ndata"], len(self.data[0]["ks"])))
+            smooths = smooth.reshape((-1, self.data[0]["ndata"], len(self.data[0]["ks"])))
+
+        else:
+
+            mods = mod.reshape((-1, self.data[0]["ndata"], len(self.data[0]["ks_output"])))
+            smooths = smooth.reshape((-1, self.data[0]["ndata"], len(self.data[0]["ks_output"])))
 
         return new_chi_squared, dof, bband, mods, smooths
 
@@ -857,8 +873,6 @@ class PowerSpectrumFit(Model):
             plt.subplots_adjust(left=0.1, top=ratio, bottom=0.05, right=0.85, hspace=0, wspace=0.3)
             for ax, err, mod, smooth, name, label, c in zip(axes, errs, mods, smooths, names, labels, cs):
 
-                # print(name, err, mod, smooth)
-
                 for i in range(self.data[0]["ndata"]):
 
                     mfc = c if i == 0 else "w"
@@ -883,6 +897,13 @@ class PowerSpectrumFit(Model):
                     ax[0].plot(ks, ks * mod[i], c=c, ls=ls, label="Model" if i == 0 else None)
                     ax[0].plot(ks, ks * smooth[i], c=c, ls="--", label="Smooth" if i == 0 else None)
                     ax[1].plot(ks, ks * (mod[i] - smooth[i]), c=c, ls=ls, label="Model" if i == 0 else None)
+                    # if self.broadband_type == "spline":
+                    #    for (poly, bb) in zip(self.maskpoly[self.marg_bias :], bband[self.marg_bias :]):
+                    #        print(poly[: len(ks)], np.shape(poly), bb)
+                    #        if name == f"pk{0}":
+                    #            ax[0].plot(ks, ks * bb * poly[: len(ks)])
+                    #        elif name == f"pk{2}":
+                    #            ax[0].plot(ks, ks * bb * poly[len(ks) :])
 
                     if name in [f"pk{n}" for n in self.data[0]["poles"] if n % 2 == 0]:
                         ax[0].set_ylabel("$k \\times $ " + label)
@@ -916,7 +937,91 @@ class PowerSpectrumFit(Model):
                 title = self.data[0]["name"] + " + " + self.get_name()
             fig.suptitle(title)
             if figname is not None:
-                fig.savefig(figname, bbox_inches="tight", transparent=True, dpi=300)
+                fig.savefig(figname, bbox_inches="tight", dpi=300)
+            if display:
+                plt.show()
+
+        return new_chi_squared, dof, bband, mods, smooths
+
+    def simple_plot(self, params, window=True, smooth_params=None, figname=None, title=None, display=True, c="r", idata=0):
+        import matplotlib.pyplot as plt
+
+        ks = self.data[0]["ks"]
+        err = np.sqrt(np.diag(self.data[0]["cov"]))
+
+        new_chi_squared, dof, bband, mods, smooths = self.get_model_summary(params, window=window, smooth_params=smooth_params)
+
+        # Split up the different multipoles if we have them
+        if len(err) > len(ks):
+            assert len(err) % len(ks) == 0, f"Cannot split your data - have {len(err)} points and {len(ks)} modes"
+        errs = err.reshape((-1, self.data[0]["ndata"], len(ks)))[::2]
+        if self.isotropic:
+            names = [f"pk0"]
+            spacing = [0.0]
+        else:
+            names = [f"pk{n}" for n in self.data[0]["fit_poles"]]
+            spacing = [1.0, 0.0, -1.0] if 4 in self.data[0]["fit_poles"] else [0.5, -0.5]
+        num_rows = len(names)
+        ms = ["o", "o", "s"]
+        mfcs = [c, "w", c]
+        height = 2 + 1.4 * num_rows
+
+        if display is True or figname is not None:
+            self.logger.info("Create plot")
+
+            fig, axes = plt.subplots(figsize=(2 * height, height), nrows=1, ncols=2, sharex=True, squeeze=False)
+            for err, mod, smooth, name, m, mfc, space in zip(errs, mods[::2], smooths[::2], names, ms, mfcs, spacing):
+
+                # Plot ye old data
+                axes[0, 0].errorbar(ks, ks * self.data[0][name][idata], yerr=ks * err[idata], fmt=m, mfc=mfc, label="Data", c=c)
+                axes[0, 1].errorbar(
+                    ks,
+                    ks * (self.data[0][name][idata] - smooth[idata]) + 100.0 * space,
+                    yerr=ks * err[idata],
+                    fmt=m,
+                    mfc=mfc,
+                    label="Data",
+                    c=c,
+                )
+
+                # Plot ye old model
+                axes[0, 0].plot(ks, ks * mod[idata], c=c, label="Model")
+                axes[0, 0].plot(ks, ks * smooth[idata], c=c, ls="--", label="Smooth")
+                axes[0, 1].plot(ks, ks * (mod[idata] - smooth[idata]) + 100.0 * space, c=c, label="Model")
+                axes[0, 1].axhline(y=100.0 * space, c=c, ls="--", label="Smooth")
+
+            axes[0, 0].set_xlabel("$k\,(h\,\mathrm{Mpc}^{-1})$")
+            axes[0, 1].set_xlabel("$k\,(h\,\mathrm{Mpc}^{-1})$")
+            axes[0, 0].set_ylabel("$k \\times P(k)$ ")
+            axes[0, 1].set_ylabel("$k \\times (P(k) - P_{\\rm smooth}(k))$")
+
+            # Add the chi_squared and dof
+            string = f"$\\chi^{2}/$dof$=${new_chi_squared:.1f}$/${dof:d}\n"
+            axes[0, 0].text(0.02, 0.98, string, horizontalalignment="left", verticalalignment="top", transform=axes[0, 0].transAxes)
+            axes[0, 0].text(
+                0.98,
+                0.98,
+                f"$\\alpha$=${params['alpha']:.4f}$\n",
+                horizontalalignment="right",
+                verticalalignment="top",
+                transform=axes[0, 0].transAxes,
+            )
+            if not self.isotropic:
+                axes[0, 0].text(
+                    0.98,
+                    0.94,
+                    f"$\\alpha_{{{{ap}}}}$=${(1.0 + params['epsilon']) ** 3:.4f}$\n",
+                    horizontalalignment="right",
+                    verticalalignment="top",
+                    transform=axes[0, 0].transAxes,
+                )
+
+            if title is None:
+                title = self.data[0]["name"] + " + " + self.get_name()
+            fig.suptitle(title)
+            fig.tight_layout()
+            if figname is not None:
+                fig.savefig(figname, bbox_inches="tight", dpi=300)
             if display:
                 plt.show()
 

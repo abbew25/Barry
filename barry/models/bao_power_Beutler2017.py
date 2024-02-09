@@ -27,6 +27,7 @@ class PowerBeutler2017(PowerSpectrumFit):
         poly_poles=(0, 2),
         marg=None,
         dilate_smooth=False,
+        fog_wiggles=False,
         broadband_type="spline",
         n_data=1,
         data_share_bias=False,
@@ -38,6 +39,7 @@ class PowerBeutler2017(PowerSpectrumFit):
     ):
 
         self.dilate_smooth = dilate_smooth
+        self.fog_wiggles = fog_wiggles
 
         super().__init__(
             name=name,
@@ -67,7 +69,7 @@ class PowerBeutler2017(PowerSpectrumFit):
             fix_params.append("beta_phase_shift")
             
         fix_params = tuple(fix_params) 
-        self.set_marg(fix_params, poly_poles, self.n_poly, do_bias=True, marg_bias=1)
+        self.set_marg(fix_params, poly_poles, self.n_poly, do_bias=False, marg_bias=0)
 
     def declare_parameters(self):
         super().declare_parameters()
@@ -164,14 +166,17 @@ class PowerBeutler2017(PowerSpectrumFit):
                 pk0 = pk_smooth * fog
             else:
                 # Compute the propagator
-
-                if self.param_dict["beta_phase_shift"].active:
-                    C = np.exp(-0.5 * kprime**2 * p["sigma_nl"] ** 2)
-                    pk0 = pk_smooth * (fog + splev(kprime_phaseshift, splrep(ks, pk_ratio)) * C)
-                    
-                else: 
-                    C = np.exp(-0.5 * kprime**2 * p["sigma_nl"] ** 2)
-                    pk0 = pk_smooth * (fog + splev(kprime, splrep(ks, pk_ratio)) * C)
+                C = np.exp(-0.5 * kprime**2 * p["sigma_nl"] ** 2)
+                if self.fog_wiggles:
+                    if self.param_dict["beta_phase_shift"].active:
+                        pk0 = pk_smooth * fog * (1.0 + splev(kprime_phaseshift, slrep(ks, pk_ratio)) * C)
+                    else:
+                        pk0 = pk_smooth * fog * (1.0 + splev(kprime, splrep(ks, pk_ratio)) * C)
+                else:
+                    if self.param_dict["beta_phase_shift"].active:
+                        pk0 = pk_smooth * (fog + splev(kprime_phaseshift, slprep(ks, pk_ratio)) * C)
+                    else:
+                        pk0 = pk_smooth * (fog + splev(kprime, splrep(ks, pk_ratio)) * C)
                     
             pk = [pk0]
 
@@ -217,14 +222,18 @@ class PowerBeutler2017(PowerSpectrumFit):
             # Compute the propagator
             if smooth:
                 pk2d = pk_smooth * fog
-            else:
-                if self.param_dict['beta_phase_shift'].active:
-                    #C = np.exp(-0.5 * kprime_phaseshift**2 * (muprime_phaseshift**2 * p["sigma_nl_par"] ** 2 + (1.0 - muprime_phaseshift**2) * p["sigma_nl_perp"] ** 2))
-                    C = np.exp(-0.5 * kprime**2 * (muprime**2 * p["sigma_nl_par"] ** 2 + (1.0 - muprime**2) * p["sigma_nl_perp"] ** 2))
-                    pk2d = pk_smooth * (fog + splev(kprime_phaseshift, splrep(ks, pk_ratio)) * C)
-                else: 
-                    C = np.exp(-0.5 * kprime**2 * (muprime**2 * p["sigma_nl_par"] ** 2 + (1.0 - muprime**2) * p["sigma_nl_perp"] ** 2))
-                    pk2d = pk_smooth * (fog + splev(kprime, splrep(ks, pk_ratio)) * C)
+            else:                    
+                C = np.exp(-0.5 * kprime**2 * (muprime**2 * p["sigma_nl_par"] ** 2 + (1.0 - muprime**2) * p["sigma_nl_perp"] ** 2))
+                if self.fog_wiggles:
+                    if self.param_dict['beta_phase_shift'].active: 
+                        pk2d = pk_smooth * fog * (1.0 + splev(kprime_phaseshift, splrep(ks, pk_ratio)) * C)
+                    else:
+                        pk2d = pk_smooth * fog * (1.0 + splev(kprime, splrep(ks, pk_ratio)) * C)
+                else:
+                    if self.param_dict['beta_phase_shift'].active:
+                        pk2d = pk_smooth * (fog + splev(kprime_phaseshift, slrep(ks, pk_ratio)) * C)
+                    else:
+                        pk2d = pk_smooth * (fog + splev(kprime, splrep(ks, pk_ratio)) * C)
 
             pk0, pk2, pk4 = self.integrate_mu(pk2d)
             

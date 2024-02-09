@@ -88,7 +88,7 @@ class CambGenerator(object):
         if vary_neff: 
             self.filename_unique = f"{int(self.redshift * 1000)}_{self.om_resolution}_{self.h0_resolution}_{self.neff_resolution}_{hh}_{int(ob * 10000)}_{int(ns * 1000)}_{int(mnu * 10000)}"
         self.filename = self.data_dir + f"/camb_{self.filename_unique}.npy"
-        self.k_min = 1e-4
+        self.k_min = 2e-5
         self.k_max = 100
         self.k_num = 2000
         self.ks = np.logspace(np.log(self.k_min), np.log(self.k_max), self.k_num, base=np.e)
@@ -154,9 +154,10 @@ class CambGenerator(object):
             "h0": h0,
             "r_s": data[0],
             "ks": self.ks,
-            "pk_lin": data[1 : 1 + self.k_num],
-            "pk_nl_0": data[1 + 1 * self.k_num : 1 + 2 * self.k_num],
-            "pk_nl_z": data[1 + 2 * self.k_num :],
+            "pk_lin_0": data[1 : 1 + self.k_num],
+            "pk_lin_z": data[1 + 1 * self.k_num : 1 + 2 * self.k_num],
+            "pk_nl_0": data[1 + 2 * self.k_num : 1 + 3 * self.k_num],
+            "pk_nl_z": data[1 + 3 * self.k_num :],
         }
 
     def _generate_data(self, savedata=True): # this function loops through the arrays on values for om, h0, neff etc. that we want to vary and saves the power spectra for each cosmology to an array - gets cosmo at z = 0 and 1 specified redshift 
@@ -174,9 +175,9 @@ class CambGenerator(object):
         pars.set_matter_power(redshifts=[self.redshift, 0.0], kmax=self.k_max)
         self.logger.info("Configured CAMB power and dark energy")
 
-        data = np.zeros((self.om_resolution, self.h0_resolution, 1 + 3 * self.k_num))
+        data = np.zeros((self.om_resolution, self.h0_resolution, 1 + 4 * self.k_num))
         if self.vary_neff: 
-            data = np.zeros((self.om_resolution, self.h0_resolution, self.neff_resolution, 1 + 3 * self.k_num))
+            data = np.zeros((self.om_resolution, self.h0_resolution, self.neff_resolution, 1 + 4 * self.k_num))
             
         for i, omch2 in enumerate(self.omch2s):
             for j, h0 in enumerate(self.h0s):
@@ -207,8 +208,8 @@ class CambGenerator(object):
                         results.calc_power_spectra(pars)
                         kh, z, pk_nonlin = results.get_matter_power_spectrum(minkh=self.k_min, maxkh=self.k_max, npoints=self.k_num)
                         data[i, j, k, 0] = rdrag
-                        data[i, j, k, 1 : 1 + self.k_num] = pk_lin[1, :]
-                        data[i, j, k, 1 + self.k_num :] = pk_nonlin.flatten()
+                        data[i, j, k, 1 : 1 + 2*self.k_num] = pk_lin.flatten()
+                        data[i, j, k, 1 + 2 + self.k_num :] = pk_nonlin.flatten()
                         
                         #print(rdrag)
                         
@@ -236,12 +237,11 @@ class CambGenerator(object):
                     results.calc_power_spectra(pars)
                     kh, z, pk_nonlin = results.get_matter_power_spectrum(minkh=self.k_min, maxkh=self.k_max, npoints=self.k_num)
                     data[i, j, 0] = rdrag
-                    data[i, j, 1 : 1 + self.k_num] = pk_lin[1, :]
-                    data[i, j, 1 + self.k_num :] = pk_nonlin.flatten()
+                    data[i, j, 1 : 1 + 2*self.k_num] = pk_lin.flatten()
+                    data[i, j, 1 + 2*self.k_num :] = pk_nonlin.flatten()
                     
                     #print(rdrag)
 
-                    
         if savedata:
             self.logger.info(f"Saving to {self.filename}")
             np.save(self.filename, data)
@@ -371,10 +371,10 @@ class CambGenerator(object):
 
 def test_rand_h0const():
     g = CambGenerator()
-    g.load_data()
+    g.load_data(can_generate=True)
 
     def fn():
-        g.get_data(np.random.uniform(0.1, 0.2))
+        g.get_data(np.random.uniform(0.05, 0.5))
 
     return fn
 
@@ -457,3 +457,11 @@ if __name__ == "__main__":
 #     plt.legend()
 #     plt.savefig('test1.png')
 #     plt.show()
+    plt.plot(c.ks, c.get_data(0.2)["pk_lin_z"], color="b", linestyle="-", label=r"$\mathrm{Linear}\,\Omega_{m}=0.2$")
+    plt.plot(c.ks, c.get_data(0.3)["pk_lin_z"], color="r", linestyle="-", label=r"$\mathrm{Linear}\,\Omega_{m}=0.3$")
+    plt.plot(c.ks, c.get_data(0.2)["pk_nl_z"], color="b", linestyle="--", label=r"$\mathrm{Halofit}\,\Omega_{m}=0.2$")
+    plt.plot(c.ks, c.get_data(0.3)["pk_nl_z"], color="r", linestyle="--", label=r"$\mathrm{Halofit}\,\Omega_{m}=0.3$")
+    plt.xscale("log")
+    plt.yscale("log")
+    plt.legend()
+    plt.show()

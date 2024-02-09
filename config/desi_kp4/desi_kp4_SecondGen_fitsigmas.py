@@ -26,10 +26,15 @@ if __name__ == "__main__":
     fitter = Fitter(dir_name, remove_output=False)
     sampler = NautilusSampler(temp_dir=dir_name)
 
-    colors = ["#CAF270", "#84D57B", "#4AB482", "#219180", "#1A6E73", "#234B5B", "#232C3B"]
+    colors = ["#84D57B", "#4AB482", "#219180", "#1A6E73", "#234B5B", "#232C3B", "#CAF270"]
 
-    tracers = {"LRG": [[0.4, 0.6], [0.6, 0.8], [0.8, 1.1]], "ELG_LOP": [[0.8, 1.1], [1.1, 1.6]], "QSO": [[0.8, 2.1]]}
-    reconsmooth = {"LRG": 10, "ELG_LOP": 10, "QSO": 20}
+    tracers = {
+        "LRG": [[0.4, 0.6], [0.6, 0.8], [0.8, 1.1]],
+        "ELG_LOP": [[0.8, 1.1], [1.1, 1.6]],
+        "QSO": [[0.8, 2.1]],
+        "BGS_BRIGHT-21.5": [[0.1, 0.4]],
+    }
+    reconsmooth = {"LRG": 10, "ELG_LOP": 10, "QSO": 30, "BGS_BRIGHT-21.5": 15}
 
     allnames = []
     cap = "gccomb"
@@ -51,7 +56,7 @@ if __name__ == "__main__":
                     datafile=name,
                 )
 
-                for n, n_poly in enumerate([[], [-2, -1, 0], [0, 2], [-2, 0, 2]]):
+                for n, (broadband_type, n_poly) in enumerate(zip(["poly", "spline"], [[-2, -1, 0], [0, 2]])):
 
                     model = CorrBeutler2017(
                         recon=dataset_xi.recon,
@@ -60,6 +65,7 @@ if __name__ == "__main__":
                         fix_params=["om", "alpha", "epsilon"],
                         poly_poles=dataset_xi.fit_poles,
                         correction=Correction.NONE,
+                        broadband_type=broadband_type,
                         n_poly=n_poly,
                     )
 
@@ -68,7 +74,7 @@ if __name__ == "__main__":
                     model.parent.kvals, model.parent.pksmooth, model.parent.pkratio = pktemplate.T
 
                     name = dataset_xi.name + f" mock mean n_poly=" + str(n)
-                    fitter.add_model_and_dataset(model, dataset_xi, name=name, color=colors[i + 1])
+                    fitter.add_model_and_dataset(model, dataset_xi, name=name, color=colors[i])
                     allnames.append(name)
 
     # Submit all the job. We have quite a few (42), so we'll
@@ -117,9 +123,7 @@ if __name__ == "__main__":
             # Get some useful properties of the fit, and plot the MAP model against the data if it's the mock mean
             plotname = f"{plotnames[data_bin]}_prerecon" if recon_bin == 0 else f"{plotnames[data_bin]}_postrecon"
             figname = "/".join(pfn.split("/")[:-1]) + "/" + plotname + f"_npoly={poly_bin}_bestfit.png"
-            new_chi_squared, dof, bband, mods, smooths = model.simple_plot(
-                params_dict, display=False, figname=figname, c=colors[data_bin + 1]
-            )
+            new_chi_squared, dof, bband, mods, smooths = model.simple_plot(params_dict, display=False, figname=figname, c=colors[data_bin])
 
             # Add the chain or MAP to the Chainconsumer plots
             extra.pop("realisation", None)
