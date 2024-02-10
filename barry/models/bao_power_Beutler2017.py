@@ -231,7 +231,7 @@ class PowerBeutler2017(PowerSpectrumFit):
                         pk2d = pk_smooth * fog * (1.0 + splev(kprime, splrep(ks, pk_ratio)) * C)
                 else:
                     if self.param_dict['beta_phase_shift'].active:
-                        pk2d = pk_smooth * (fog + splev(kprime_phaseshift, slrep(ks, pk_ratio)) * C)
+                        pk2d = pk_smooth * (fog + splev(kprime_phaseshift, splrep(ks, pk_ratio)) * C)
                     else:
                         pk2d = pk_smooth * (fog + splev(kprime, splrep(ks, pk_ratio)) * C)
 
