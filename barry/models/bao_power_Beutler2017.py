@@ -169,7 +169,7 @@ class PowerBeutler2017(PowerSpectrumFit):
                 C = np.exp(-0.5 * kprime**2 * p["sigma_nl"] ** 2)
                 if self.fog_wiggles:
                     if self.param_dict["beta_phase_shift"].active:
-                        pk0 = pk_smooth * fog * (1.0 + splev(kprime_phaseshift, slrep(ks, pk_ratio)) * C)
+                        pk0 = pk_smooth * fog * (1.0 + splev(kprime_phaseshift, splrep(ks, pk_ratio)) * C)
                     else:
                         pk0 = pk_smooth * fog * (1.0 + splev(kprime, splrep(ks, pk_ratio)) * C)
                 else:
