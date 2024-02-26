@@ -230,7 +230,7 @@ class CLASSGenerator(object):
                     M.set({"output": "mPk", "P_k_max_1/Mpc": self.k_max, "z_max_pk": self.redshift})
                     ks_fid = np.logspace(np.log(self.k_min * h0), np.log(self.k_max * h0), self.k_num, base=np.e) # ks in 1/ MPC unit
                     M.compute()
-                    data[i, j, k, 1 : 1 + self.k_num] = np.array([M.pk_lin(ki, 0.0)*(h0 * h0 * h0) for ki in ks_fid])
+                    data[i, j, 1 : 1 + self.k_num] = np.array([M.pk_lin(ki, 0.0)*(h0 * h0 * h0) for ki in ks_fid])
                     data[i, j, 1 + self.k_num : 1 + 2 * self.k_num] = np.array([M.pk_lin(ki, self.redshift)*(h0 * h0 * h0) for ki in ks_fid]) 
 
                     M.set({"output": "mPk", "P_k_max_1/Mpc": self.k_max, "z_max_pk": self.redshift, 'non linear': 'Halofit'})
