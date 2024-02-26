@@ -22,10 +22,10 @@ def validate_smooth_method(kwargs):
         logging.getLogger("barry").error(f"No smoothing method specified in smooth_type: {kwargs}")
 
 
-def smooth_func(ks, pk, om=0.31, h0=0.676, ob=0.04814, ns=0.97, mnu=0.0, method="hinton2017"):
+def smooth_func(ks, pk, om=0.31, h0=0.676, ob=0.04814, ns=0.97, mnu=0.0, Neff=3.044, method="hinton2017"):
 
     # Set up a cosmology
-    new_params = {"Omega_m": om, "h": h0, "Omega_b": ob, "n_s": ns, "omega_ncdm": mnu / 93.14}
+    new_params = {"Omega_m": om, "h": h0, "Omega_b": ob, "n_s": ns, "omega_ncdm": mnu / 93.14, "N_eff": Neff}
     cosmo = DESI().clone(engine="camb", **new_params)
 
     # Set up the power spectrum interpolator for cosmoprimo,
@@ -33,7 +33,7 @@ def smooth_func(ks, pk, om=0.31, h0=0.676, ob=0.04814, ns=0.97, mnu=0.0, method=
 
     # Set up the cosmoprimo smooth pk class
     pknow = PowerSpectrumBAOFilter(pk1d, cosmo_fid=cosmo, engine=method).smooth_pk_interpolator()
-
+    
     return pknow(ks)
 
 
