@@ -769,6 +769,7 @@ class PowerSpectrumFit(Model):
         """
 
         mod, polymod, mask = self.get_model(params, self.data[0], data_name=self.data[0]["name"], window=window)
+        print(self.data[0]["name"])
         if smooth_params is not None:
             smooth, polysmooth, _ = self.get_model(smooth_params, self.data[0], smooth=True, data_name=self.data[0]["name"])
         else:
