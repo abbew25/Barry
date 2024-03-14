@@ -25,9 +25,9 @@ if __name__ == "__main__":
     
     
     # The optimal sigma values we found when fitting the mocks with fixed alpha/epsilon
-    sigma_nl_par = {None: 8.7, "sym": 5.4}
-    sigma_nl_perp = {None: 4.0, "sym": 1.5}
-    sigma_s = {None: 3.5, "sym": 0.0}
+    sigma_nl_par = {None: 8.7, "sym": 5.0}
+    sigma_nl_perp = {None: 4.0, "sym": 2.0}
+    sigma_s = {None: 3.5, "sym": 2.0}
     
     # Loop over the mocktypes
     allnames = []
@@ -54,7 +54,7 @@ if __name__ == "__main__":
             dataset_xi = CorrelationFunction_DESI_KP4(
                 recon=recon,
                 fit_poles=[0, 2],
-                min_dist=52.0,
+                min_dist=50.0,
                 max_dist=150.0,
                 realisation=None,
                 num_mocks=1000,
@@ -69,14 +69,14 @@ if __name__ == "__main__":
                 isotropic=dataset_pk.isotropic,
                 marg="full",                              # Analytic marginalisation
                 poly_poles=dataset_pk.fit_poles,
-                correction=Correction.NONE,               # No covariance matrix debiasing 
+                correction=Correction.HARTLAP,               # No covariance matrix debiasing 
                 broadband_type = 'poly'
             )
 
             # Set Gaussian priors for the BAO damping centred on the optimal values 
             # found from fitting with fixed alpha/epsilon and with width 2 Mpc/h
             model.set_default("sigma_nl_par", sigma_nl_par[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
-            model.set_default("sigma_nl_perp", sigma_nl_perp[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
+            model.set_default("sigma_nl_perp", sigma_nl_perp[recon], min=0.0, max=20.0, sigma=1.0, prior="gaussian")
             model.set_default("sigma_s", sigma_s[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
 
             # Load in the proper DESI BAO template rather than Barry computing its own.
@@ -102,14 +102,15 @@ if __name__ == "__main__":
                 isotropic=dataset_xi.isotropic,
                 marg="full",
                 poly_poles=dataset_xi.fit_poles,
-                correction=Correction.NONE,
-                broadband_type = 'poly'
+                correction=Correction.HARTLAP,
+                broadband_type = 'poly',
+                n_poly = [-2, -1, 0]
             )
 
             # Set Gaussian priors for the BAO damping centred on the optimal values 
             # found from fitting with fixed alpha/epsilon and with width 2 Mpc/h
             model.set_default("sigma_nl_par", sigma_nl_par[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
-            model.set_default("sigma_nl_perp", sigma_nl_perp[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
+            model.set_default("sigma_nl_perp", sigma_nl_perp[recon], min=0.0, max=20.0, sigma=1.0, prior="gaussian")
             model.set_default("sigma_s", sigma_s[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
              
             #pktemplate = np.loadtxt("../prepare_data/DESI_Pk_template.dat")

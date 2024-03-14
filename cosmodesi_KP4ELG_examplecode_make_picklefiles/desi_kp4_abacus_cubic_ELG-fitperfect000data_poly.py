@@ -57,6 +57,7 @@ if __name__ == "__main__":
                 poly_poles=dataset_pk.fit_poles,
                 correction=Correction.NONE,               # No covariance matrix debiasing
                 broadband_type='poly',
+                n_poly=[-1.0, 0.0, 1.0, 2.0, 3.0, 4.0]
                 #vary_phase_shift_neff=True, 
             )
             

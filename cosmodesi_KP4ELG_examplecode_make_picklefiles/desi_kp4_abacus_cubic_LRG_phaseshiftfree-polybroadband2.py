@@ -24,9 +24,9 @@ if __name__ == "__main__":
     fitter = Fitter(dir_name, remove_output=True)
     sampler = NautilusSampler(temp_dir=dir_name, nlive=500)
     
-    sigma_nl_par = {None: 8.7, "sym": 5.0}
-    sigma_nl_perp = {None: 4.0, "sym": 2.0}
-    sigma_s = {None: 3.5, "sym": 2.0}
+    sigma_nl_par = {None: 9.5, "sym": 5.0}
+    sigma_nl_perp = {None: 5.0, "sym": 2.0}
+    sigma_s = {None: 2.0, "sym": 2.0}
     
     # Loop over the mocktypes
     allnames = []
@@ -46,24 +46,25 @@ if __name__ == "__main__":
                 realisation=None,          # realisation=None loads the average of all the realisations
                 num_mocks=1000,            # Used for Hartlap/Sellentin correction if correction=Correction.HARTLAP or Correction.SELLENTIN
                 reduce_cov_factor=25,       # if = 1 Use standard covariance, even for the average
-                datafile=mockname+"_pk_elg.pkl",
+                datafile=mockname+"_pk_lrg.pkl",
                 #data_location="../prepare_data/",
                 data_location="/global/u1/a/abbew25/barryrepo/Barry/cosmodesi_KP4ELG_examplecode_make_picklefiles",
             )
 
             # ------------------------------------------------------------------------------------------------------
-            dataset_xi = CorrelationFunction_DESI_KP4(
-                recon=recon,
-                fit_poles=[0, 2],
-                min_dist=50.0,
-                max_dist=150.0,
-                realisation=None,
-                num_mocks=1000,
-                reduce_cov_factor=25,
-                datafile=mockname+"_xi_elg.pkl",
-                #data_location="../prepare_data/",
-                data_location="/global/u1/a/abbew25/barryrepo/Barry/cosmodesi_KP4ELG_examplecode_make_picklefiles",
-            )
+            if 'cv' not in mockname: 
+                dataset_xi = CorrelationFunction_DESI_KP4(
+                    recon=recon,
+                    fit_poles=[0, 2],
+                    min_dist=50.0,
+                    max_dist=150.0,
+                    realisation=None,
+                    num_mocks=1000,
+                    reduce_cov_factor=25,
+                    datafile=mockname+"_xi_lrg.pkl",
+                    #data_location="../prepare_data/",
+                    data_location="/global/u1/a/abbew25/barryrepo/Barry/cosmodesi_KP4ELG_examplecode_make_picklefiles",
+                )
             # ------------------------------------------------------------------------------------------------------
 
             # Set up the appropriate model for the power spectrum
@@ -136,38 +137,39 @@ if __name__ == "__main__":
 
                 
             # correlation function ----------------------------------------------------------------------------------
-            model = CorrBeutler2017(
-                recon=dataset_xi.recon,
-                isotropic=dataset_xi.isotropic,
-                marg="full",
-                poly_poles=dataset_xi.fit_poles,
-                correction=Correction.HARTLAP,
-                #n_poly=3,    # 4 polynomial terms for Xi(s)
-                vary_phase_shift_neff=True,
-                broadband_type = 'poly',
-                n_poly=[-2, -1, 0]
-            )
+            if 'cv' not in mockname: 
+                model = CorrBeutler2017(
+                    recon=dataset_xi.recon,
+                    isotropic=dataset_xi.isotropic,
+                    marg="full",
+                    poly_poles=dataset_xi.fit_poles,
+                    correction=Correction.HARTLAP,
+                    #n_poly=3,    # 4 polynomial terms for Xi(s)
+                    vary_phase_shift_neff=True,
+                    broadband_type = 'poly',
+                    n_poly=[-2, -1, 0]
+                )
 
-            # Set Gaussian priors for the BAO damping centred on the optimal values 
-            # found from fitting with fixed alpha/epsilon and with width 2 Mpc/h
-            model.set_default("sigma_nl_par", sigma_nl_par[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
-            model.set_default("sigma_nl_perp", sigma_nl_perp[recon], min=0.0, max=20.0, sigma=1.0, prior="gaussian")
-            model.set_default("sigma_s", sigma_s[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
+                # Set Gaussian priors for the BAO damping centred on the optimal values 
+                # found from fitting with fixed alpha/epsilon and with width 2 Mpc/h
+                model.set_default("sigma_nl_par", sigma_nl_par[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
+                model.set_default("sigma_nl_perp", sigma_nl_perp[recon], min=0.0, max=20.0, sigma=1.0, prior="gaussian")
+                model.set_default("sigma_s", sigma_s[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
 
-            #pktemplate = np.loadtxt("../prepare_data/DESI_Pk_template.dat")
-            pktemplate = np.loadtxt("DESI_Pk_template.dat")
-            model.parent.kvals, model.parent.pksmooth, model.parent.pkratio = pktemplate.T
+                #pktemplate = np.loadtxt("../prepare_data/DESI_Pk_template.dat")
+                pktemplate = np.loadtxt("DESI_Pk_template.dat")
+                model.parent.kvals, model.parent.pksmooth, model.parent.pkratio = pktemplate.T
 
-            name = dataset_xi.name + " mock mean"
-            fitter.add_model_and_dataset(model, dataset_xi, name=name)
-            allnames.append(name)
-
-            # Now add the individual realisations to the list
-            for j in range(len(dataset_xi.mock_data)):
-                dataset_xi.set_realisation(j)
-                name = dataset_xi.name + f" realisation {j}"
+                name = dataset_xi.name + " mock mean"
                 fitter.add_model_and_dataset(model, dataset_xi, name=name)
                 allnames.append(name)
+
+                # Now add the individual realisations to the list
+                for j in range(len(dataset_xi.mock_data)):
+                    dataset_xi.set_realisation(j)
+                    name = dataset_xi.name + f" realisation {j}"
+                    fitter.add_model_and_dataset(model, dataset_xi, name=name)
+                    allnames.append(name)
             # ------------------------------------------------------------------------------------------------------
 
     #print(allnames)
