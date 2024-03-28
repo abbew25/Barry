@@ -209,7 +209,8 @@ class CambGenerator(object):
                         kh, z, pk_nonlin = results.get_matter_power_spectrum(minkh=self.k_min, maxkh=self.k_max, npoints=self.k_num)
                         data[i, j, k, 0] = rdrag
                         data[i, j, k, 1 : 1 + 2*self.k_num] = pk_lin.flatten()
-                        data[i, j, k, 1 + 2 + self.k_num :] = pk_nonlin.flatten()
+                        print(pk_nonlin.shape)
+                        data[i, j, k, 1 + 2*self.k_num :] = pk_nonlin.flatten()
                         
                         #print(rdrag)
                         
