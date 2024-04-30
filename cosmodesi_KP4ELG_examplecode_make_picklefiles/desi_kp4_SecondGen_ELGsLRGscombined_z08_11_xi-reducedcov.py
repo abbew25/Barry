@@ -68,37 +68,20 @@ if __name__ == "__main__":
     colors = [mplc.cnames[color] for color in ["orange", "orangered", "firebrick", "lightskyblue", "steelblue", "seagreen", "black"]]
 
     tracers = {
-        "LRG": [ [0.6, 0.8]], # , [0.8, 1.1], [0.4, 0.6],],
-       # "ELG_LOP": [[0.8, 1.1], [1.1, 1.6]],
-        #"QSO": [[0.8, 2.1]],
-        #"BGS_BRIGHT-21.5": [[0.1, 0.4]],
+        "LRG+ELG_LOPnotqso": [[0.8, 1.1]],
     }
-    reconsmooth = {"LRG": 10, "ELG_LOP": 10, "QSO": 30, "BGS_BRIGHT-21.5": 15}
     sigma_nl_par = {
-        "LRG": [
-            [9.0, 6.0],
-            [9.0, 6.0],
+        "LRG+ELG_LOPnotqso": [
             [9.0, 6.0],
         ],
-        "ELG_LOP": [[8.5, 6.0], [8.5, 6.0]],
-        "QSO": [[9.0, 6.0]],
-        "BGS_BRIGHT-21.5": [[10.0, 8.0]],
     }
     sigma_nl_perp = {
-        "LRG": [
-            [4.5, 3.0],
-            [4.5, 3.0],
+        "LRG+ELG_LOPnotqso": [
             [4.5, 3.0],
         ],
-        "ELG_LOP": [[4.5, 3.0], [4.5, 3.0]],
-        "QSO": [[3.5, 3.0]],
-        "BGS_BRIGHT-21.5": [[6.5, 3.0]],
     }
     sigma_s = {
-        "LRG": [[2.0, 2.0], [2.0, 2.0], [2.0, 2.0]],
-        "ELG_LOP": [[2.0, 2.0], [2.0, 2.0]],
-        "QSO": [[2.0, 2.0]],
-        "BGS_BRIGHT-21.5": [[2.0, 2.0]],
+        "LRG+ELG_LOPnotqso": [[2.0, 2.0]],
     }
 
     cap = "gccomb"
@@ -136,6 +119,7 @@ if __name__ == "__main__":
                             correction=Correction.NONE,
                             broadband_type=broadband,
                             n_poly=n_poly,
+                            reduce_cov_factor=25,
                             vary_phase_shift_neff=vary_beta
                         )
                         model.set_default(f"b{{{0}}}_{{{1}}}", 2.0, min=0.5, max=4.0)
@@ -149,15 +133,15 @@ if __name__ == "__main__":
                         pktemplate = np.loadtxt("DESI_Pk_template.dat")
                         model.parent.kvals, model.parent.pksmooth, model.parent.pkratio = pktemplate.T
 
-                        name = f"DESI_SecondGen_pickledbyAW_sm{reconsmooth[t]}_{t.lower()}_{cap}_z{zs[0]}-{zs[1]}_default_FKP_xi.pkl"
-
+                        name = f"DESI_SecondGen_pickledbyAW_sm15_lrg+elg_lopnotqso_gccomb_z0.8-1.1_default_fkp_lin_nran10_njack0_split20_default_FKP_xi.pkl"
+                                            
                         dataset = CorrelationFunction_DESI_KP4(
                             recon=model.recon,
                             fit_poles=model.poly_poles,
                             min_dist=50.0,
                             max_dist=150.0,
                             realisation=None,
-                            reduce_cov_factor=1,
+                            reduce_cov_factor=25,
                             datafile=name,
                             data_location="/global/cfs/cdirs/desi/users/chowlett/barry_inputs/",
                         )
@@ -173,8 +157,8 @@ if __name__ == "__main__":
                             allnames.append(name)
 
 
-#                     # ------------------------------------------------------------------------------------------------
-#                     # ------------------------------------------------------------------------------------------------
+                    # ------------------------------------------------------------------------------------------------
+                    # ------------------------------------------------------------------------------------------------
 
 #                     n_poly = [-1, 0, 1, 2, 3]
 #                     if broadband == 'spline':
@@ -240,7 +224,6 @@ if __name__ == "__main__":
     # directory is empty (i.e., it won't overwrite existing chains)
     fitter.set_sampler(sampler)
     fitter.set_num_walkers(1)
-    
     outfile = fitter.temp_dir+pfn.split("/")[-1]+".fitter.pkl"
     with open(outfile, 'wb') as pickle_file:
         pickle.dump(fitter, pickle_file)

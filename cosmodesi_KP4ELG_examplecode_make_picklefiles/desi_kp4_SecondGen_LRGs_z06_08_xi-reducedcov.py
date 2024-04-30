@@ -136,6 +136,7 @@ if __name__ == "__main__":
                             correction=Correction.NONE,
                             broadband_type=broadband,
                             n_poly=n_poly,
+                            reduce_cov_factor=25,
                             vary_phase_shift_neff=vary_beta
                         )
                         model.set_default(f"b{{{0}}}_{{{1}}}", 2.0, min=0.5, max=4.0)
@@ -157,7 +158,7 @@ if __name__ == "__main__":
                             min_dist=50.0,
                             max_dist=150.0,
                             realisation=None,
-                            reduce_cov_factor=1,
+                            reduce_cov_factor=25,
                             datafile=name,
                             data_location="/global/cfs/cdirs/desi/users/chowlett/barry_inputs/",
                         )

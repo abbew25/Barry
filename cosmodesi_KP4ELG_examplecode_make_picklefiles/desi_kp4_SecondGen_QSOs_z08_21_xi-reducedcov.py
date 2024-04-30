@@ -68,10 +68,10 @@ if __name__ == "__main__":
     colors = [mplc.cnames[color] for color in ["orange", "orangered", "firebrick", "lightskyblue", "steelblue", "seagreen", "black"]]
 
     tracers = {
-        "LRG": [ [0.6, 0.8]], # , [0.8, 1.1], [0.4, 0.6],],
+       # "LRG": [[0.4, 0.6], [0.6, 0.8], [0.8, 1.1]],
        # "ELG_LOP": [[0.8, 1.1], [1.1, 1.6]],
-        #"QSO": [[0.8, 2.1]],
-        #"BGS_BRIGHT-21.5": [[0.1, 0.4]],
+        "QSO": [[0.8, 2.1]],
+       # "BGS_BRIGHT-21.5": [[0.1, 0.4]],
     }
     reconsmooth = {"LRG": 10, "ELG_LOP": 10, "QSO": 30, "BGS_BRIGHT-21.5": 15}
     sigma_nl_par = {
@@ -131,11 +131,12 @@ if __name__ == "__main__":
                             recon=recon,
                             isotropic=False,
                             marg="full",
-                            fix_params=["om"],
+                            fix_params=["om", "epsilon"],
                             poly_poles=[0, 2],
                             correction=Correction.NONE,
                             broadband_type=broadband,
                             n_poly=n_poly,
+                            reduce_cov_factor=25,
                             vary_phase_shift_neff=vary_beta
                         )
                         model.set_default(f"b{{{0}}}_{{{1}}}", 2.0, min=0.5, max=4.0)
@@ -157,7 +158,7 @@ if __name__ == "__main__":
                             min_dist=50.0,
                             max_dist=150.0,
                             realisation=None,
-                            reduce_cov_factor=1,
+                            reduce_cov_factor=25,
                             datafile=name,
                             data_location="/global/cfs/cdirs/desi/users/chowlett/barry_inputs/",
                         )
@@ -240,11 +241,10 @@ if __name__ == "__main__":
     # directory is empty (i.e., it won't overwrite existing chains)
     fitter.set_sampler(sampler)
     fitter.set_num_walkers(1)
-    
     outfile = fitter.temp_dir+pfn.split("/")[-1]+".fitter.pkl"
     with open(outfile, 'wb') as pickle_file:
         pickle.dump(fitter, pickle_file)
-        
+    
     fitter.fit(file)
 
     # Everything below here is for plotting the chains once they have been run. The should_plot()

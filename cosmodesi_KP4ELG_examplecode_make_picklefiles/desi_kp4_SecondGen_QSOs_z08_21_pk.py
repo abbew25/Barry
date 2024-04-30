@@ -119,7 +119,7 @@ if __name__ == "__main__":
         for i, zs in enumerate(tracers[t]):
             for r, recon in enumerate([None, "sym"]):
                 for broadband in ['spline', 'poly']:
-                    for vary_beta in [True, False]: 
+                    for vary_beta in [True]:# , False]: 
 #                     # ------------------------------------------------------------------------------------------------
 #                     # ------------------------------------------------------------------------------------------------
 
@@ -205,7 +205,7 @@ if __name__ == "__main__":
                         model.set_default("sigma_nl_par", sigma_nl_par[t][i][r], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
                         model.set_default("sigma_nl_perp", sigma_nl_perp[t][i][r], min=0.0, max=20.0, sigma=1.0, prior="gaussian")
                         model.set_default("sigma_s", sigma_s[t][i][r], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
-                        model.set_default('beta_phase_shift', default=1.0, min=-5, max=10)
+                        model.set_default('beta_phase_shift', default=1.0, min=-8, max=10)
                         
                         # Load in a pre-existing BAO template
                         pktemplate = np.loadtxt("DESI_Pk_template.dat")

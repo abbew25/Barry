@@ -68,10 +68,10 @@ if __name__ == "__main__":
     colors = [mplc.cnames[color] for color in ["orange", "orangered", "firebrick", "lightskyblue", "steelblue", "seagreen", "black"]]
 
     tracers = {
-        "LRG": [ [0.6, 0.8]], # , [0.8, 1.1], [0.4, 0.6],],
-       # "ELG_LOP": [[0.8, 1.1], [1.1, 1.6]],
+        #"LRG": [[0.4, 0.6], [0.6, 0.8], [0.8, 1.1]],
+        #"ELG_LOP": [[0.8, 1.1], [1.1, 1.6]],
         #"QSO": [[0.8, 2.1]],
-        #"BGS_BRIGHT-21.5": [[0.1, 0.4]],
+        "BGS_BRIGHT-21.5": [[0.1, 0.4]],
     }
     reconsmooth = {"LRG": 10, "ELG_LOP": 10, "QSO": 30, "BGS_BRIGHT-21.5": 15}
     sigma_nl_par = {
@@ -119,6 +119,7 @@ if __name__ == "__main__":
         for i, zs in enumerate(tracers[t]):
             for r, recon in enumerate([None, "sym"]):
                 for broadband in ['spline', 'poly']:
+                
                     for vary_beta in [True]:# , False]: 
                         # ------------------------------------------------------------------------------------------------
                         # ------------------------------------------------------------------------------------------------
@@ -131,11 +132,12 @@ if __name__ == "__main__":
                             recon=recon,
                             isotropic=False,
                             marg="full",
-                            fix_params=["om"],
+                            fix_params=["om", "epsilon"],
                             poly_poles=[0, 2],
                             correction=Correction.NONE,
                             broadband_type=broadband,
                             n_poly=n_poly,
+                            reduce_cov_factor=25,
                             vary_phase_shift_neff=vary_beta
                         )
                         model.set_default(f"b{{{0}}}_{{{1}}}", 2.0, min=0.5, max=4.0)
@@ -148,7 +150,7 @@ if __name__ == "__main__":
                         # Load in a pre-existing BAO template
                         pktemplate = np.loadtxt("DESI_Pk_template.dat")
                         model.parent.kvals, model.parent.pksmooth, model.parent.pkratio = pktemplate.T
-
+                        
                         name = f"DESI_SecondGen_pickledbyAW_sm{reconsmooth[t]}_{t.lower()}_{cap}_z{zs[0]}-{zs[1]}_default_FKP_xi.pkl"
 
                         dataset = CorrelationFunction_DESI_KP4(
@@ -157,7 +159,7 @@ if __name__ == "__main__":
                             min_dist=50.0,
                             max_dist=150.0,
                             realisation=None,
-                            reduce_cov_factor=1,
+                            reduce_cov_factor=25,
                             datafile=name,
                             data_location="/global/cfs/cdirs/desi/users/chowlett/barry_inputs/",
                         )
@@ -173,8 +175,8 @@ if __name__ == "__main__":
                             allnames.append(name)
 
 
-#                     # ------------------------------------------------------------------------------------------------
-#                     # ------------------------------------------------------------------------------------------------
+                        # ------------------------------------------------------------------------------------------------
+                        # ------------------------------------------------------------------------------------------------
 
 #                     n_poly = [-1, 0, 1, 2, 3]
 #                     if broadband == 'spline':
@@ -244,7 +246,6 @@ if __name__ == "__main__":
     outfile = fitter.temp_dir+pfn.split("/")[-1]+".fitter.pkl"
     with open(outfile, 'wb') as pickle_file:
         pickle.dump(fitter, pickle_file)
-        
     fitter.fit(file)
 
     # Everything below here is for plotting the chains once they have been run. The should_plot()
