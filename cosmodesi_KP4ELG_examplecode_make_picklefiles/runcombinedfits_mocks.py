@@ -96,7 +96,7 @@ if data == 'pk':
     with open(path + 'LRGs_z08_11_' + data + '-reducedcov/output/desi_kp4_SecondGen_LRGs_z08_11_' + data + '-reducedcov.fitter.pkl', 'rb') as pickle_file:
         fitter_LRG3 = pickle.load(pickle_file)
 else:
-    with open(path + 'ELGsLRGscombined_z08_11_' + data + '/output/desi_kp4_SecondGen_ELGsLRGscombined_z08_11_' + data + '-reducedcov.fitter.pkl', 'rb') as pickle_file:
+    with open(path + 'ELGsLRGscombined_z08_11_' + data + '-reducedcov/output/desi_kp4_SecondGen_ELGsLRGscombined_z08_11_' + data + '-reducedcov.fitter.pkl', 'rb') as pickle_file:
         fitter_LRG3ELG1 = pickle.load(pickle_file)
 
 # ELG2 
@@ -262,4 +262,4 @@ df_fit = pd.DataFrame({labels[i]: chains_flat[:,i] for i in np.arange(len(chains
 print('MCMC successful, saving chain to a file') 
 
 # save to a file 
-df_fit.to_csv("/global/u1/a/abbew25/barryrepo/Barry/cosmodesi_KP4ELG_examplecode_make_picklefiles/combinedfits_secondgen_mocks_v1_2_reducedcov/"+data+"_"+recon+"_"+broadband_method +"_" + str(realisation_number) + ".csv")
+df_fit.to_csv("/pscratch/sd/a/abbew25/combinedfits_secondgen_mocks_v1_2_reducedcov/"+data+"_"+recon+"_"+broadband_method +"_" + str(realisation_number) + ".csv")

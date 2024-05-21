@@ -147,7 +147,7 @@ if __name__ == "__main__":
                     #n_poly=3,    # 4 polynomial terms for Xi(s)
                     vary_phase_shift_neff=True,
                     broadband_type = 'poly',
-                    n_poly=[-2, -1, 0]
+                    # n_poly=[-2, -1, 0]
                 )
 
                 # Set Gaussian priors for the BAO damping centred on the optimal values 

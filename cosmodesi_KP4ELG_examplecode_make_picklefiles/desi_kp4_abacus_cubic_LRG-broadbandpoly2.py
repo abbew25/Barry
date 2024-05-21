@@ -105,7 +105,7 @@ if __name__ == "__main__":
                     poly_poles=dataset_xi.fit_poles,
                     correction=Correction.HARTLAP,
                     broadband_type = 'poly',
-                    n_poly = [-2, -1, 0]
+                    # n_poly = [-2, -1, 0]
                 )
 
                 # Set Gaussian priors for the BAO damping centred on the optimal values 
