@@ -24,8 +24,8 @@ if __name__ == "__main__":
     fitter = Fitter(dir_name, remove_output=True)
     sampler = NautilusSampler(temp_dir=dir_name, nlive=500)
     
-    sigma_nl_par = {None: 8.5, "sym": 6.0}
-    sigma_nl_perp = {None: 4.5, "sym": 3.0}
+    sigma_nl_par = {None: 9.5, "sym": 5.0}
+    sigma_nl_perp = {None: 5.0, "sym": 2.0}
     sigma_s = {None: 2.0, "sym": 2.0}
     
     # Loop over the mocktypes
