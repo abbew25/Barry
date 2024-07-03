@@ -36,8 +36,9 @@ list_paramswanted = [r'$\alpha$', r'$\epsilon$', r'$\beta_{\phi(N_{\mathrm{eff}}
 copy_list_BGSQSO = list_paramswanted.copy()
 copy_list_BGSQSO.remove(r'$\epsilon$')
 
-labels_pk = [r'$\alpha_{\mathrm{QSO}}$',
-          r'$\alpha_{\mathrm{BGS}}$',
+labels_pk = [
+          #r'$\alpha_{\mathrm{QSO}}$',
+          #r'$\alpha_{\mathrm{BGS}}$',
           r'$\alpha_{\mathrm{LRG1}}$', 
           r'$\epsilon_{\mathrm{LRG1}}$',
           r'$\alpha_{\mathrm{LRG2}}$', 
@@ -49,8 +50,9 @@ labels_pk = [r'$\alpha_{\mathrm{QSO}}$',
           r'$\beta_{N_{\mathrm{eff}}}$'
          ]
 
-labels_xi = [r'$\alpha_{\mathrm{QSO}}$',
-          r'$\alpha_{\mathrm{BGS}}$',
+labels_xi = [
+          #r'$\alpha_{\mathrm{QSO}}$',
+          #r'$\alpha_{\mathrm{BGS}}$',
           r'$\alpha_{\mathrm{LRG1}}$', 
           r'$\epsilon_{\mathrm{LRG1}}$',
           r'$\alpha_{\mathrm{LRG2}}$', 
@@ -73,38 +75,43 @@ print('command line variables and basic variables set up')
 
 
 # read in the fitter objects in order to read in the chains 
-path = '/global/u1/a/abbew25/barryrepo/Barry/cosmodesi_KP4ELG_examplecode_make_picklefiles/plots/desi_kp4_SecondGen_'
+path = '/pscratch/sd/a/abbew25/desi_kp4_SecondGen_'
 
-# BGS - no epsilon fits 
-with open(path + 'BGS_z01_04_' + data + '-reducedcov/output/desi_kp4_SecondGen_BGS_z01_04_' + data + '-reducedcov.fitter.pkl', 'rb') as pickle_file:
-    fitter_BGS = pickle.load(pickle_file)
+# # BGS - no epsilon fits 
+# with open(path + 'BGS_z01_04_' + data + '-gridtemplate003/output/desi_kp4_SecondGen_BGS_z01_04_' + data + '-gridtemplate003.fitter.pkl', 'rb') as pickle_file:
+#     fitter_BGS = pickle.load(pickle_file)
 
-# QSOs - no epsilon fits 
-with open(path + 'QSOs_z08_21_' + data + '-reducedcov/output/desi_kp4_SecondGen_QSOs_z08_21_' + data + '-reducedcov.fitter.pkl', 'rb') as pickle_file:
-    fitter_QSO = pickle.load(pickle_file)
+# # QSOs - no epsilon fits 
+# with open(path + 'QSOs_z08_21_' + data + '-gridtemplate003/output/desi_kp4_SecondGen_QSOs_z08_21_' + data + '-gridtemplate003.fitter.pkl', 'rb') as pickle_file:
+#     fitter_QSO = pickle.load(pickle_file)
     
 # LRG1
-with open(path + 'LRGs_z04_06_' + data + '-reducedcov/output/desi_kp4_SecondGen_LRGs_z04_06_' + data + '-reducedcov.fitter.pkl', 'rb') as pickle_file:
+with open(path + 'LRGs_z04_06_' + data + '/output/desi_kp4_SecondGen_LRGs_z04_06_' + data + '.fitter.pkl', 'rb') as pickle_file:
     fitter_LRG1 = pickle.load(pickle_file)
+    fitter_LRG1.temp_dir = path + 'LRGs_z04_06_' + data + '/output/'
 
 # LRG2
-with open(path + 'LRGs_z06_08_' + data + '-reducedcov/output/desi_kp4_SecondGen_LRGs_z06_08_' + data + '-reducedcov.fitter.pkl', 'rb') as pickle_file:
+with open(path + 'LRGs_z06_08_' + data + '/output/desi_kp4_SecondGen_LRGs_z06_08_' + data + '.fitter.pkl', 'rb') as pickle_file:
     fitter_LRG2 = pickle.load(pickle_file)
-
+    fitter_LRG2.temp_dir = path + 'LRGs_z06_08_' + data + '/output/'
+    
 # LRG3 or LRG3+ELG1
 if data == 'pk':
-    with open(path + 'LRGs_z08_11_' + data + '-reducedcov/output/desi_kp4_SecondGen_LRGs_z08_11_' + data + '-reducedcov.fitter.pkl', 'rb') as pickle_file:
+    with open(path + 'LRGs_z08_11_' + data + '/output/desi_kp4_SecondGen_LRGs_z08_11_' + data + '-gridtemplate003.fitter.pkl', 'rb') as pickle_file:
         fitter_LRG3 = pickle.load(pickle_file)
+        fitter_LRG3.temp_dir = path + 'LRGs_z08_11_' + data + '/output/'
 else:
-    with open(path + 'ELGsLRGscombined_z08_11_' + data + '-reducedcov/output/desi_kp4_SecondGen_ELGsLRGscombined_z08_11_' + data + '-reducedcov.fitter.pkl', 'rb') as pickle_file:
+    with open(path + 'ELGsLRGscombined_z08_11_' + data + '/output/desi_kp4_SecondGen_ELGsLRGscombined_z08_11_' + data + '.fitter.pkl', 'rb') as pickle_file:
         fitter_LRG3ELG1 = pickle.load(pickle_file)
+        fitter_LRG3ELG1.temp_dir = path + 'ELGsLRGscombined_z08_11_' + data + '/output/'
 
 # ELG2 
-with open(path + 'ELGs_z11_16_' + data + '-reducedcov/output/desi_kp4_SecondGen_ELGs_z11_16_' + data + '-reducedcov.fitter.pkl', 'rb') as pickle_file:
+with open(path + 'ELGs_z11_16_' + data + '/output/desi_kp4_SecondGen_ELGs_z11_16_' + data + '.fitter.pkl', 'rb') as pickle_file:
     fitter_ELG2 = pickle.load(pickle_file)
-    
+    fitter_ELG2.temp_dir = path + 'ELGs_z11_16_' + data + '/output/'
 
-fitters = {'QSO': fitter_QSO, 'BGS': fitter_BGS, 'LRG1': fitter_LRG1, 'LRG2': fitter_LRG2, 'ELG2': fitter_ELG2}
+fitters = {#'QSO': fitter_QSO, 'BGS': fitter_BGS, 
+           'LRG1': fitter_LRG1, 'LRG2': fitter_LRG2, 'ELG2': fitter_ELG2}
 if data == 'pk': 
     fitters['LRG3'] = fitter_LRG3
 else:
@@ -160,64 +167,64 @@ def log_prob_betaphaseshift(x):
     # x is a vector with alpha, epsilon x 5 for each dataset - in a given order 
     # get the likelihood from each KDE 
 
-    qso = dataframes_kdes['QSO'][1]([x[0], x[10]])[0]
-    bgs = dataframes_kdes['BGS'][1]([x[1], x[10]])[0]
-    lrg1 = dataframes_kdes['LRG1'][1]([x[2], x[3], x[10]])[0]
-    lrg2 = dataframes_kdes['LRG2'][1]([x[4], x[5], x[10]])[0]
+    #qso = dataframes_kdes['QSO'][1]([x[0], x[10]])[0]
+    #bgs = dataframes_kdes['BGS'][1]([x[1], x[10]])[0]
+    lrg1 = dataframes_kdes['LRG1'][1]([x[0], x[1], x[8]])[0]
+    lrg2 = dataframes_kdes['LRG2'][1]([x[2], x[3], x[8]])[0]
     if data == 'pk':
-        lrg3 = dataframes_kdes['LRG3'][1]([x[6], x[7], x[10]])[0]
+        lrg3 = dataframes_kdes['LRG3'][1]([x[4], x[5], x[8]])[0]
     else:
-        lrg3 = dataframes_kdes['LRG3ELG1'][1]([x[6], x[7], x[10]])[0]
-    elg2 = dataframes_kdes['ELG2'][1]([x[8], x[9], x[10]])[0]
+        lrg3 = dataframes_kdes['LRG3ELG1'][1]([x[4], x[5], x[8]])[0]
+    elg2 = dataframes_kdes['ELG2'][1]([x[6], x[7], x[8]])[0]
     
-    if qso <= 0.0 or abs(x[0])-1.0 >= 0.2 or abs(qso) == np.inf:
-        qso = -np.inf 
-    else:
-        qso = np.log(qso)
+#     if qso <= 0.0 or abs(x[0])-1.0 >= 0.2 or abs(qso) == np.inf:
+#         qso = -np.inf 
+#     else:
+#         qso = np.log(qso)
     
-    if bgs <= 0.0 or abs(x[1])-1.0 >= 0.2 or abs(bgs) == np.inf:
-        bgs = -np.inf 
-    else:
-        bgs = np.log(bgs)
+#     if bgs <= 0.0 or abs(x[1])-1.0 >= 0.2 or abs(bgs) == np.inf:
+#         bgs = -np.inf 
+#     else:
+#         bgs = np.log(bgs)
         
-    if lrg1 <= 0.0 or abs(x[2])-1.0 >= 0.2 or abs(x[3]) >= 0.2 or abs(lrg1) == np.inf: 
+    if lrg1 <= 0.0 or abs(x[0])-1.0 >= 0.2 or abs(x[1]) >= 0.2 or abs(lrg1) == np.inf: 
         lrg1 = -np.inf 
     else:
         lrg1 = np.log(lrg1)
     
-    if lrg2 <= 0.0 or abs(x[4])-1.0 >= 0.2 or abs(x[5]) >= 0.2 or abs(lrg2) == np.inf: 
+    if lrg2 <= 0.0 or abs(x[2])-1.0 >= 0.2 or abs(x[3]) >= 0.2 or abs(lrg2) == np.inf: 
         lrg2 = -np.inf 
     else:
         lrg2 = np.log(lrg2)
         
-    if lrg3 <= 0.0 or abs(x[6])-1.0 >= 0.2 or abs(x[7]) >= 0.2 or abs(lrg3) == np.inf: 
+    if lrg3 <= 0.0 or abs(x[4])-1.0 >= 0.2 or abs(x[5]) >= 0.2 or abs(lrg3) == np.inf: 
         lrg3 = -np.inf 
     else:
         lrg3 = np.log(lrg3)
     
-    if elg2 <= 0.0 or abs(x[8])-1.0 >= 0.2 or abs(x[9]) >= 0.2 or abs(elg2) == np.inf: 
+    if elg2 <= 0.0 or abs(x[6])-1.0 >= 0.2 or abs(x[7]) >= 0.2 or abs(elg2) == np.inf: 
         elg2 = -np.inf 
     else:
         elg2 = np.log(elg2)
         
         
-    if abs(lrg1) == np.inf or abs(lrg2) == np.inf or abs(lrg3) == np.inf or abs(elg2) == np.inf or abs(qso) == np.inf or abs(bgs) == np.inf:
+    if abs(lrg1) == np.inf or abs(lrg2) == np.inf or abs(lrg3) == np.inf or abs(elg2) == np.inf: #  or abs(qso) == np.inf or abs(bgs) == np.inf:
         logl = -np.inf 
-    elif x[10] > 10 or x[10] < -8.0:
+    elif x[8] > 10 or x[8] < -8.0:
         logl = -np.inf
     else: 
-        logl = elg2 + lrg1 + lrg2 + lrg3 + qso + bgs 
+        logl = elg2 + lrg1 + lrg2 + lrg3 # + qso + bgs 
         
     return logl 
 
 print('running MCMC') 
 
 # now run an MCMC fit to the combined likelihood of the KDES (using previously defined function) 
-dim = 11
+dim = 9
 np.random.seed(42)
 nwalkers = 32                                                                                          
-p0 = np.array([np.random.uniform(0.99, 1.01, nwalkers),  
-               np.random.uniform(0.99, 1.01, nwalkers),  
+p0 = np.array([ #np.random.uniform(0.99, 1.01, nwalkers),  
+               # np.random.uniform(0.99, 1.01, nwalkers),  
                np.random.uniform(0.99, 1.01, nwalkers),  np.random.uniform(-0.01, 0.01, nwalkers), 
                np.random.uniform(0.99, 1.01, nwalkers),  np.random.uniform(-0.01, 0.01, nwalkers), 
                np.random.uniform(0.99, 1.01, nwalkers),  np.random.uniform(-0.01, 0.01, nwalkers), 
@@ -262,4 +269,4 @@ df_fit = pd.DataFrame({labels[i]: chains_flat[:,i] for i in np.arange(len(chains
 print('MCMC successful, saving chain to a file') 
 
 # save to a file 
-df_fit.to_csv("/pscratch/sd/a/abbew25/combinedfits_secondgen_mocks_v1_2_reducedcov/"+data+"_"+recon+"_"+broadband_method +"_" + str(realisation_number) + ".csv")
+df_fit.to_csv("/pscratch/sd/a/abbew25/combinedfits_secondgen_mocks_v1_2_elgslrgsbaselineBARRY/"+data+"_"+recon+"_"+broadband_method +"_" + str(realisation_number) + ".csv")

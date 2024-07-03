@@ -104,7 +104,7 @@ if __name__ == "__main__":
             # Set Gaussian priors for the BAO damping centred on the optimal values 
             # found from fitting with fixed alpha/epsilon and with width 2 Mpc/h
             model.set_default("sigma_nl_par", sigma_nl_par[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
-            model.set_default("sigma_nl_perp", sigma_nl_perp[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
+            model.set_default("sigma_nl_perp", sigma_nl_perp[recon], min=0.0, max=20.0, sigma=1.0, prior="gaussian")
             model.set_default("sigma_s", sigma_s[recon], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
 
             # Load in the proper DESI BAO template rather than Barry computing its own.

@@ -20,7 +20,7 @@ if __name__ == "__main__":
 
     # Set up the Fitting class and Dynesty sampler with 500 live points. 
     # Set remove_output=False to make sure that we don't delete/overwrite existing chains in the same directory.
-    fitter = Fitter(dir_name, remove_output=True)
+    fitter = Fitter(dir_name, remove_output=False)
     sampler = NautilusSampler(temp_dir=dir_name, nlive=500)
     
     
