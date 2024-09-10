@@ -200,8 +200,10 @@ if __name__ == "__main__":
                             vary_phase_shift_neff=vary_beta
                         )
 
-                        model.set_default(f"b{{{0}}}_{{{1}}}", 2.0, min=0.5, max=4.0)
-                        model.set_default("beta", 0.4, min=0.1, max=0.7)
+                        # model.set_default(f"b{{{0}}}_{{{1}}}", 2.0, min=0.5, max=4.0)
+                        # model.set_default("beta", 0.4, min=0.1, max=0.7)
+                        model.set_default(f"b{{{0}}}_{{{1}}}", 2.0, min=0.25, max=16.0)
+                        model.set_default("beta", 0.4, min=0.01, max=2.0)
                         model.set_default("sigma_nl_par", sigma_nl_par[t][i][r], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
                         model.set_default("sigma_nl_perp", sigma_nl_perp[t][i][r], min=0.0, max=20.0, sigma=1.0, prior="gaussian")
                         model.set_default("sigma_s", sigma_s[t][i][r], min=0.0, max=20.0, sigma=2.0, prior="gaussian")
