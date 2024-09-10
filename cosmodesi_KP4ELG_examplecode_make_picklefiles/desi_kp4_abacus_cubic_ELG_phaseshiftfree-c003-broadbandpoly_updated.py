@@ -37,7 +37,7 @@ if __name__ == "__main__":
     
     # Loop over the mocktypes
     allnames = []
-    mocknames = ['desi_kp4_abacus_cubicbox_pk_c003_gridc000_elg.pkl']#, 'desi_kp4_abacus_cubicbox_cv']
+    mocknames = ['desi_kp4_abacus_cubicbox_pk_c003_gridc000_(updated)elg.pkl']#, 'desi_kp4_abacus_cubicbox_cv']
     for i, mockname in enumerate(mocknames):
 
         # Loop over pre- and post-recon measurements
