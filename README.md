@@ -3,8 +3,7 @@
 [Documentation online here](https://barry.readthedocs.io/en/latest/)
 
 Modular BAO fitting code.
-This version of the repo includes the ability to fit the phase shift beta due to free streaming neutrinos as an additional parameter.
-
+This version of the repo includes the ability to fit the phase shift beta due to free streaming neutrinos as an additional parameter, and was used to produce the results in https://arxiv.org/abs/2412.05990 
 ## Setup
 
 1. Ensure that you have a named conda environment of at least Python 3.7
