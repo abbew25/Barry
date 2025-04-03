@@ -3,6 +3,7 @@
 [Documentation online here](https://barry.readthedocs.io/en/latest/)
 
 Modular BAO fitting code.
+This version of the repo includes the ability to fit the phase shift beta due to free streaming neutrinos as an additional parameter.
 
 ## Setup
 
